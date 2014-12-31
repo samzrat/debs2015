@@ -39,32 +39,32 @@ public class LL2XY {
       LOG.info("Starting");
 
       LL2XY ll2xy = new LL2XY();
-      ArrayList<String> entries = ll2xy.readFile(ll2xyConfigMap.get("grid.filename").toString());
-      for (int i = 1; i < entries.size(); i++) {
-         String entry = entries.get(i);
-         String[] pieces = entry.split(",");
-         sLat1 = Double.parseDouble(pieces[11]);
-         sLong1 = Double.parseDouble(pieces[10]);
-         sLat2 = Double.parseDouble(pieces[13]);
-         sLong2 = Double.parseDouble(pieces[12]);
-
-         XY xy1 = ll2xy.computeLL2XY(sLat1, sLong1);
-         XY xy2 = ll2xy.computeLL2XY(sLat2, sLong2);
-
-         Double distance = (ll2xy.getEuclideanDistance(xy1, xy2)) / 1000;
-         Cell cell1 = ll2xy.getCellID(xy1);
-         Cell cell2 = ll2xy.getCellID(xy2);
-         LOG.info(distance + "\t" + cell1.xCell + "," + cell1.yCell + "\t" + cell2.xCell + ","
-                  + cell2.yCell);
-      }
-      // XY xy1 = ll2xy.computeLL2XY(sLat1, sLong1);
-      // XY xy2 = ll2xy.computeLL2XY(sLat2, sLong2);
-      //
-      // Double distance = ll2xy.getEuclideanDistance(xy1, xy2);
-      // LOG.info(xy1);
-      // LOG.info(xy2);
-      // LOG.info(distance);
-      // LOG.info("Done!!!");
+//      ArrayList<String> entries = ll2xy.readFile(ll2xyConfigMap.get("grid.filename").toString());
+//      for (int i = 1; i < entries.size(); i++) {
+//         String entry = entries.get(i);
+//         String[] pieces = entry.split(",");
+//         sLat1 = Double.parseDouble(pieces[11]);
+//         sLong1 = Double.parseDouble(pieces[10]);
+//         sLat2 = Double.parseDouble(pieces[13]);
+//         sLong2 = Double.parseDouble(pieces[12]);
+//
+//         XY xy1 = ll2xy.computeLL2XY(sLat1, sLong1);
+//         XY xy2 = ll2xy.computeLL2XY(sLat2, sLong2);
+//
+//         Double distance = (ll2xy.getEuclideanDistance(xy1, xy2)) / 1000;
+//         Cell cell1 = ll2xy.getCellID(xy1);
+//         Cell cell2 = ll2xy.getCellID(xy2);
+//         LOG.info(distance + "\t" + cell1.xCell + "," + cell1.yCell + "\t" + cell2.xCell + ","
+//                  + cell2.yCell);
+//      }
+       XY xy1 = ll2xy.computeLL2XY(sLat1, sLong1);
+       XY xy2 = ll2xy.computeLL2XY(sLat2, sLong2);
+      
+       Double distance = ll2xy.getEuclideanDistance(xy1, xy2);
+       LOG.info(xy1);
+       LOG.info(xy2);
+       LOG.info(distance);
+       LOG.info("Done!!!");
    }
 
    public XY computeLL2XY(Double srcLat, Double srcLong) {
@@ -98,7 +98,7 @@ public class LL2XY {
       return x / RADIANS;
    }
 
-   private Double getEuclideanDistance(XY xy1, XY xy2) {
+   public Double getEuclideanDistance(XY xy1, XY xy2) {
       /*
        * returns distance in meters
        */
