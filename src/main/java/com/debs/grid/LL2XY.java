@@ -7,8 +7,12 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.LineIterator;
@@ -19,8 +23,13 @@ import org.apache.log4j.Logger;
  * @author Sameer
  * 
  */
+
 public class LL2XY {
 
+	static HashMap<String, Integer> hm = new HashMap<String, Integer>();
+
+	private List<String> windowedEvents = new ArrayList<String>(); 
+	
    // private Double sLat = 40.757977;
    // private Double sLong = -73.978165;
    private Double oLat = 41.474937;
@@ -64,6 +73,45 @@ public class LL2XY {
             Cell cell2 = ll2xy.getCellID(xy2);
             LOG.info(distance + "\t" + cell1.xCell + "," + cell1.yCell + "\t" + cell2.xCell + ","
                      + cell2.yCell);
+            
+            String start = pieces[5];
+            String end = pieces[6];		
+            LOG.info("Start time is " + start + " and end time is " + end);  
+            
+            LOG.info(start.matches("^\\d{1,2}/\\d{1,2}/2013\\s\\d{1,2}:\\d{1,2}$"));
+
+            Pattern datePatt = Pattern.compile("([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})\\s([0-9]{1,2}):([0-9]{1,2})");
+
+            Matcher m = datePatt.matcher(start);
+            if (m.matches()) {
+              int month   = Integer.parseInt(m.group(1));
+              int day = Integer.parseInt(m.group(2));
+              int year  = Integer.parseInt(m.group(3));
+              int hour  = Integer.parseInt(m.group(4));
+              int minute  = Integer.parseInt(m.group(5));
+              
+              LOG.info("Month = " + month);
+              LOG.info("Day = " + day);
+              LOG.info("Year = " + year);
+              LOG.info("Hour = " + hour);
+              LOG.info("Minute = " + minute);
+            }
+            
+            
+            String key = cell1.xCell.toString() + cell1.yCell.toString() + cell2.xCell.toString() + cell2.yCell.toString();
+
+            if(distance != 0)
+            {
+            	if(hm.containsKey(key))
+            	{
+            		hm.put(key, hm.get(key)+1);
+            	}
+            	else
+            	{
+            		hm.put(key, 1);
+            	}
+            }	
+            
          } catch (java.lang.NumberFormatException e) {
             LOG.error("Invalid line - " + entry);
          }
@@ -75,7 +123,20 @@ public class LL2XY {
       // LOG.info(xy1);
       // LOG.info(xy2);
       // LOG.info(distance);
+      
+      Iterator iit = hm.entrySet().iterator();
+      while (iit.hasNext()) {
+          Map.Entry pairs = (Map.Entry)iit.next();
+  //        System.out.println(pairs.getKey() + " = " + pairs.getValue());
+
+      }
+      
       LOG.info("Done!!!");
+      
+      
+      
+      
+      
    }
 
    public XY computeLL2XY(Double srcLat, Double srcLong) {
