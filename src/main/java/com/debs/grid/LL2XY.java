@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -26,9 +27,8 @@ import org.apache.log4j.Logger;
 
 public class LL2XY {
 
-	static HashMap<String, Integer> hm = new HashMap<String, Integer>();
-
-	private List<String> windowedEvents = new ArrayList<String>(); 
+	
+	private static Window window = new Window(); 
 	
    // private Double sLat = 40.757977;
    // private Double sLong = -73.978165;
@@ -39,7 +39,7 @@ public class LL2XY {
    private static Logger LOG = Logger.getLogger(LL2XY.class);
    private static Map<String, String> ll2xyConfigMap = new HashMap<String, String>();
 
-   public static void main(String[] args) throws IOException {
+   public static void main(String[] args) throws Exception {
       Double sLat1 = 40.756775;
       Double sLong1 = -73.989937;
 
@@ -80,37 +80,10 @@ public class LL2XY {
             
             LOG.info(start.matches("^\\d{1,2}/\\d{1,2}/2013\\s\\d{1,2}:\\d{1,2}$"));
 
-            Pattern datePatt = Pattern.compile("([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})\\s([0-9]{1,2}):([0-9]{1,2})");
-
-            Matcher m = datePatt.matcher(start);
-            if (m.matches()) {
-              int month   = Integer.parseInt(m.group(1));
-              int day = Integer.parseInt(m.group(2));
-              int year  = Integer.parseInt(m.group(3));
-              int hour  = Integer.parseInt(m.group(4));
-              int minute  = Integer.parseInt(m.group(5));
-              
-              LOG.info("Month = " + month);
-              LOG.info("Day = " + day);
-              LOG.info("Year = " + year);
-              LOG.info("Hour = " + hour);
-              LOG.info("Minute = " + minute);
-            }
+            TripEvent tripEvent = new TripEvent(extractDateTime(start), extractDateTime(end), cell1, cell2, distance);
+            window.addNewTripEvent(tripEvent);
             
             
-            String key = cell1.xCell.toString() + cell1.yCell.toString() + cell2.xCell.toString() + cell2.yCell.toString();
-
-            if(distance != 0)
-            {
-            	if(hm.containsKey(key))
-            	{
-            		hm.put(key, hm.get(key)+1);
-            	}
-            	else
-            	{
-            		hm.put(key, 1);
-            	}
-            }	
             
          } catch (java.lang.NumberFormatException e) {
             LOG.error("Invalid line - " + entry);
@@ -124,19 +97,39 @@ public class LL2XY {
       // LOG.info(xy2);
       // LOG.info(distance);
       
-      Iterator iit = hm.entrySet().iterator();
-      while (iit.hasNext()) {
-          Map.Entry pairs = (Map.Entry)iit.next();
-  //        System.out.println(pairs.getKey() + " = " + pairs.getValue());
-
-      }
-      
+          
       LOG.info("Done!!!");
       
       
       
       
       
+   }
+   
+   private static Calendar extractDateTime(String dateTimeStr) throws Exception {
+	   
+	   Pattern datePatt = Pattern.compile("([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})\\s([0-9]{1,2}):([0-9]{1,2})");
+	   
+	   int month, date, year, hour, minute;
+       Matcher m = datePatt.matcher(dateTimeStr);
+       if (m.matches()) {
+          month   = Integer.parseInt(m.group(1));
+          date = Integer.parseInt(m.group(2));
+          year  = Integer.parseInt(m.group(3));
+          hour  = Integer.parseInt(m.group(4));
+          minute  = Integer.parseInt(m.group(5));
+         
+         LOG.debug("DateTime [" + dateTimeStr + "] extracted to - Month = " + month + ", Date = " + date + ", Year = " + year + ", Hour = " + hour + ", Minute = " + minute);
+         
+         Calendar calendar = Calendar.getInstance();
+         calendar.set(year, month, date, hour, minute);
+         return calendar;
+       }
+       else {
+    	   throw new Exception();
+       }
+
+
    }
 
    public XY computeLL2XY(Double srcLat, Double srcLong) {
@@ -196,9 +189,9 @@ public class LL2XY {
       return new Cell(x, y);
    }
 
-   class XY {
-      Double xx;
-      Double yy;
+   public class XY {
+	  public final Double xx;
+	  public final Double yy;
 
       public XY(Double x, Double y) {
          xx = x;
@@ -213,9 +206,9 @@ public class LL2XY {
       }
    }
 
-   class Cell {
-      Long xCell;
-      Long yCell;
+   public class Cell {
+      public final Long xCell;
+      public final Long yCell;
 
       public Cell(Long x, Long y) {
          xCell = x;
