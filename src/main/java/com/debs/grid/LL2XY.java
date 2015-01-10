@@ -8,10 +8,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,9 +29,10 @@ import org.apache.log4j.Logger;
 
 public class LL2XY {
 
-	
-	private static Window window = new Window(); 
-	
+
+//   private static Window window = new Window();
+//   private static Frame frame = new Frame();
+
    // private Double sLat = 40.757977;
    // private Double sLong = -73.978165;
    private Double oLat = 41.474937;
@@ -73,18 +76,28 @@ public class LL2XY {
             Cell cell2 = ll2xy.getCellID(xy2);
             LOG.info(distance + "\t" + cell1.xCell + "," + cell1.yCell + "\t" + cell2.xCell + ","
                      + cell2.yCell);
-            
+
             String start = pieces[5];
-            String end = pieces[6];		
-            LOG.info("Start time is " + start + " and end time is " + end);  
-            
+            String end = pieces[6];
+            LOG.info("Start time is " + start + " and end time is " + end);
+
             LOG.info(start.matches("^\\d{1,2}/\\d{1,2}/2013\\s\\d{1,2}:\\d{1,2}$"));
 
-            TripEvent tripEvent = new TripEvent(extractDateTime(start), extractDateTime(end), cell1, cell2, distance);
-            window.addNewTripEvent(tripEvent);
+            TripEvent tripEvent =
+                     new TripEvent(extractDateTime(start), extractDateTime(end), cell1, cell2,
+                              distance);
             
-            
-            
+            Frame frame = new Frame();
+            frame.setNewTripEvent(tripEvent);
+            ExecutorService service = Executors.newSingleThreadExecutor();
+            service.submit(frame);
+
+            Poller poller = new Poller();
+            poller.setTripEvent(tripEvent);
+            ScheduledExecutorService scheduledThreadPool = Executors.newScheduledThreadPool(1);
+            scheduledThreadPool.scheduleAtFixedRate(poller, 0, 3, TimeUnit.SECONDS);
+            // window.addNewTripEvent(tripEvent);
+
          } catch (java.lang.NumberFormatException e) {
             LOG.error("Invalid line - " + entry);
          }
@@ -96,40 +109,32 @@ public class LL2XY {
       // LOG.info(xy1);
       // LOG.info(xy2);
       // LOG.info(distance);
-      
-          
       LOG.info("Done!!!");
-      
-      
-      
-      
-      
    }
-   
+
    private static Calendar extractDateTime(String dateTimeStr) throws Exception {
-	   
-	   Pattern datePatt = Pattern.compile("([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})\\s([0-9]{1,2}):([0-9]{1,2})");
-	   
-	   int month, date, year, hour, minute;
-       Matcher m = datePatt.matcher(dateTimeStr);
-       if (m.matches()) {
-          month   = Integer.parseInt(m.group(1));
-          date = Integer.parseInt(m.group(2));
-          year  = Integer.parseInt(m.group(3));
-          hour  = Integer.parseInt(m.group(4));
-          minute  = Integer.parseInt(m.group(5));
-         
-         LOG.debug("DateTime [" + dateTimeStr + "] extracted to - Month = " + month + ", Date = " + date + ", Year = " + year + ", Hour = " + hour + ", Minute = " + minute);
-         
+
+      Pattern datePatt =
+               Pattern.compile("([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})\\s([0-9]{1,2}):([0-9]{1,2})");
+
+      int month, date, year, hour, minute;
+      Matcher m = datePatt.matcher(dateTimeStr);
+      if (m.matches()) {
+         month = Integer.parseInt(m.group(1));
+         date = Integer.parseInt(m.group(2));
+         year = Integer.parseInt(m.group(3));
+         hour = Integer.parseInt(m.group(4));
+         minute = Integer.parseInt(m.group(5));
+
+         LOG.debug("DateTime [" + dateTimeStr + "] extracted to - Month = " + month + ", Date = "
+                  + date + ", Year = " + year + ", Hour = " + hour + ", Minute = " + minute);
+
          Calendar calendar = Calendar.getInstance();
          calendar.set(year, month, date, hour, minute);
          return calendar;
-       }
-       else {
-    	   throw new Exception();
-       }
-
-
+      } else {
+         throw new Exception();
+      }
    }
 
    public XY computeLL2XY(Double srcLat, Double srcLong) {
@@ -190,8 +195,8 @@ public class LL2XY {
    }
 
    public class XY {
-	  public final Double xx;
-	  public final Double yy;
+      public final Double xx;
+      public final Double yy;
 
       public XY(Double x, Double y) {
          xx = x;
