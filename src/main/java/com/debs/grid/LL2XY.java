@@ -60,6 +60,7 @@ public class LL2XY {
       LineIterator it =
                FileUtils.lineIterator(new File(ll2xyConfigMap.get("grid.filename").toString()),
                         "UTF-8");
+      //it.nextLine();
       Integer lineCount = 0;
       while (it.hasNext()) {
          ++lineCount;
@@ -68,10 +69,14 @@ public class LL2XY {
          String entry = it.nextLine();
          String[] pieces = entry.split(",");
          try {
-            sLat1 = Double.parseDouble(pieces[11]);
-            sLong1 = Double.parseDouble(pieces[10]);
-            sLat2 = Double.parseDouble(pieces[13]);
-            sLong2 = Double.parseDouble(pieces[12]);
+        	 LOG.info(pieces[6]);
+        	 LOG.info(pieces[7]);
+        	 LOG.info(pieces[8]);
+        	 LOG.info(pieces[9]);
+            sLat1 = Double.parseDouble(pieces[7]);
+            sLong1 = Double.parseDouble(pieces[6]);
+            sLat2 = Double.parseDouble(pieces[9]);
+            sLong2 = Double.parseDouble(pieces[8]);
 
             XY xy1 = ll2xy.computeLL2XY(sLat1, sLong1);
             XY xy2 = ll2xy.computeLL2XY(sLat2, sLong2);
@@ -82,8 +87,8 @@ public class LL2XY {
             LOG.info(distance + "\t" + cell1.xCell + "," + cell1.yCell + "\t" + cell2.xCell + ","
                      + cell2.yCell);
 
-            String start = pieces[5];
-            String end = pieces[6];
+            String start = pieces[2];
+            String end = pieces[3];
             LOG.info("Start time is " + start + " and end time is " + end);
             TripEvent tripEvent =
                      new TripEvent(extractDateTime(start), extractDateTime(end), cell1, cell2,
@@ -112,7 +117,7 @@ public class LL2XY {
    private static Calendar extractDateTime(String dateTimeStr) throws Exception {
 
       Pattern datePatt =
-               Pattern.compile("([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})\\s([0-9]{1,2}):([0-9]{1,2})");
+               Pattern.compile("([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\\s([0-9]{1,2}):([0-9]{1,2}):([0-9]{1,2})");
 
       int month, date, year, hour, minute;
       Matcher m = datePatt.matcher(dateTimeStr);
