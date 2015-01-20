@@ -10,19 +10,9 @@ public class Poller implements Runnable {
    private Calendar startTime;
    private Calendar endTime;
 
-   private TripEvent tripEvent = null;
-
-   public TripEvent getTripEvent() {
-      return tripEvent;
-   }
-
-   public void setTripEvent(TripEvent tripEvent) {
-      this.tripEvent = tripEvent;
-   }
-
    @Override
    public void run() {
-      endTime = tripEvent.endTime;
+      endTime = Frame.tripEvent.endTime;
 
       startTime = ((Calendar) (endTime.clone()));
       startTime.add(Calendar.HOUR_OF_DAY, -30);
@@ -40,8 +30,10 @@ public class Poller implements Runnable {
             if (tripEvent.distance != 0) {
                if (Frame.getRouteMap().containsKey(key)) {
                   Frame.getRouteMap().put(key, Frame.getRouteMap().get(key) - 1);
-                  if (Frame.getRouteMap().get(key) == 0)
+                  if (Frame.getRouteMap().get(key) == 0) {
+                     System.out.println("Removing key - " + key);
                      Frame.getRouteMap().remove(key);
+                  }
                }
             }
          }

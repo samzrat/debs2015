@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -41,6 +42,7 @@ public class LL2XY {
    private Double angle = 0.0;
    private static Logger LOG = Logger.getLogger(LL2XY.class);
    private static Map<String, String> ll2xyConfigMap = new HashMap<String, String>();
+   private static SimpleDateFormat sdf = new SimpleDateFormat("M/dd/yyyy hh:mm");
 
    public static void main(String[] args) throws Exception {
       Double sLat1 = 40.756775;
@@ -50,8 +52,11 @@ public class LL2XY {
       Double sLong2 = -73.86525;
       populateConfigs();
       BasicConfigurator.configure();
-      LOG.info("Starting");
 
+      ScheduledExecutorService scheduledThreadPool = Executors.newScheduledThreadPool(1);
+      Poller poller = new Poller();
+      scheduledThreadPool.scheduleAtFixedRate(poller, 1, 3, TimeUnit.SECONDS);
+      
       LineIterator it =
                FileUtils.lineIterator(new File(ll2xyConfigMap.get("grid.filename").toString()),
                         "UTF-8");
@@ -80,9 +85,6 @@ public class LL2XY {
             String start = pieces[5];
             String end = pieces[6];
             LOG.info("Start time is " + start + " and end time is " + end);
-
-            LOG.info(start.matches("^\\d{1,2}/\\d{1,2}/2013\\s\\d{1,2}:\\d{1,2}$"));
-
             TripEvent tripEvent =
                      new TripEvent(extractDateTime(start), extractDateTime(end), cell1, cell2,
                               distance);
@@ -92,16 +94,11 @@ public class LL2XY {
             ExecutorService service = Executors.newSingleThreadExecutor();
             service.submit(frame);
 
-            Poller poller = new Poller();
-            poller.setTripEvent(tripEvent);
-            ScheduledExecutorService scheduledThreadPool = Executors.newScheduledThreadPool(1);
-            scheduledThreadPool.scheduleAtFixedRate(poller, 0, 3, TimeUnit.SECONDS);
-            // window.addNewTripEvent(tripEvent);
-
          } catch (java.lang.NumberFormatException e) {
             LOG.error("Invalid line - " + entry);
          }
       }
+
       // XY xy1 = ll2xy.computeLL2XY(sLat1, sLong1);
       // XY xy2 = ll2xy.computeLL2XY(sLat2, sLong2);
       //

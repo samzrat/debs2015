@@ -18,7 +18,7 @@ public class Frame implements Runnable {
    private Calendar startTime;
    private Calendar endTime;
 
-   private TripEvent tripEvent = null;
+   public static TripEvent tripEvent = null;
 
    public static ConcurrentHashMap<String, Integer> getRouteMap() {
       return routeMap;
