@@ -17,7 +17,8 @@ public class Poller implements Runnable {
       startTime = ((Calendar) (endTime.clone()));
       startTime.add(Calendar.HOUR_OF_DAY, -30);
 
-      System.out.println("Invoking poller(), size of current event list = " + Frame.currentEvents.size());
+      System.out.println("Invoking poller(), size of current event list = "
+               + Frame.currentEvents.size());
       for (TripEvent tripEvent : Frame.currentEvents) {
          if (tripEvent.endTime.compareTo(this.startTime) < 0) {
             Frame.currentEvents.remove(tripEvent);
@@ -37,7 +38,7 @@ public class Poller implements Runnable {
                }
             }
          }
-         System.out.println("poller() completed");
       }
+      System.out.println("poller() completed");
    }
 }
