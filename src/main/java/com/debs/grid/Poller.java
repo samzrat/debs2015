@@ -1,27 +1,32 @@
 package com.debs.grid;
 
-import java.util.Calendar;
+import java.util.Date;
+import java.util.Iterator;
+
+import org.apache.log4j.Logger;
 
 /**
  * @author Sameer
  * 
  */
 public class Poller implements Runnable {
-   private Calendar startTime;
-   private Calendar endTime;
+   private Date startTime;
+   private Date endTime;
+   private static final Logger LOG = Logger.getLogger(Poller.class);
 
    @Override
    public void run() {
       endTime = Frame.tripEvent.endTime;
 
-      startTime = ((Calendar) (endTime.clone()));
-      startTime.add(Calendar.HOUR_OF_DAY, -30);
+      startTime = new Date(endTime.getTime() - 30 * 60000);
 
-      System.out.println("Invoking poller(), size of current event list = "
-               + Frame.currentEvents.size());
-      for (TripEvent tripEvent : Frame.currentEvents) {
-         if (tripEvent.endTime.compareTo(this.startTime) < 0) {
-            Frame.currentEvents.remove(tripEvent);
+      LOG.info("Invoking poller(), size of current event list = " + Frame.currentEvents.size());
+      Iterator<TripEvent> itr = Frame.currentEvents.iterator();
+      while (itr.hasNext()) {
+
+         TripEvent tripEvent = itr.next();
+         if (tripEvent.endTime.before(startTime)) {
+            itr.remove();
 
             String key =
                      tripEvent.startCell.xCell.toString() + tripEvent.startCell.yCell.toString()
@@ -39,6 +44,6 @@ public class Poller implements Runnable {
             }
          }
       }
-      System.out.println("poller() completed");
+      LOG.info("poller() completed");
    }
 }

@@ -1,13 +1,10 @@
 package com.debs.grid;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.IOException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -15,9 +12,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.LineIterator;
 import org.apache.log4j.BasicConfigurator;
@@ -31,8 +25,8 @@ import org.apache.log4j.Logger;
 public class LL2XY {
 
 
-//   private static Window window = new Window();
-//   private static Frame frame = new Frame();
+   // private static Window window = new Window();
+   // private static Frame frame = new Frame();
 
    // private Double sLat = 40.757977;
    // private Double sLong = -73.978165;
@@ -42,8 +36,13 @@ public class LL2XY {
    private Double angle = 0.0;
    private static Logger LOG = Logger.getLogger(LL2XY.class);
    private static Map<String, String> ll2xyConfigMap = new HashMap<String, String>();
-   private static SimpleDateFormat sdf = new SimpleDateFormat("M/dd/yyyy hh:mm");
+   private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat(
+            "M/dd/yyyy hh:mm");
 
+   /**
+    * @param args
+    * @throws Exception
+    */
    public static void main(String[] args) throws Exception {
       Double sLat1 = 40.756775;
       Double sLong1 = -73.989937;
@@ -53,14 +52,14 @@ public class LL2XY {
       populateConfigs();
       BasicConfigurator.configure();
 
-      ScheduledExecutorService scheduledThreadPool = Executors.newScheduledThreadPool(1);
-      Poller poller = new Poller();
-      scheduledThreadPool.scheduleAtFixedRate(poller, 1, 3, TimeUnit.SECONDS);
-      
+//      ScheduledExecutorService scheduledThreadPool = Executors.newScheduledThreadPool(1);
+//      Poller poller = new Poller();
+//      scheduledThreadPool.scheduleAtFixedRate(poller, 1, 3, TimeUnit.SECONDS);
+
       LineIterator it =
                FileUtils.lineIterator(new File(ll2xyConfigMap.get("grid.filename").toString()),
                         "UTF-8");
-      //it.nextLine();
+      // it.nextLine();
       Integer lineCount = 0;
       while (it.hasNext()) {
          ++lineCount;
@@ -69,14 +68,10 @@ public class LL2XY {
          String entry = it.nextLine();
          String[] pieces = entry.split(",");
          try {
-        	 LOG.info(pieces[6]);
-        	 LOG.info(pieces[7]);
-        	 LOG.info(pieces[8]);
-        	 LOG.info(pieces[9]);
-            sLat1 = Double.parseDouble(pieces[7]);
-            sLong1 = Double.parseDouble(pieces[6]);
-            sLat2 = Double.parseDouble(pieces[9]);
-            sLong2 = Double.parseDouble(pieces[8]);
+            sLat1 = Double.parseDouble(pieces[11]);
+            sLong1 = Double.parseDouble(pieces[10]);
+            sLat2 = Double.parseDouble(pieces[13]);
+            sLong2 = Double.parseDouble(pieces[12]);
 
             XY xy1 = ll2xy.computeLL2XY(sLat1, sLong1);
             XY xy2 = ll2xy.computeLL2XY(sLat2, sLong2);
@@ -84,18 +79,15 @@ public class LL2XY {
             Double distance = (ll2xy.getEuclideanDistance(xy1, xy2)) / 1000;
             Cell cell1 = ll2xy.getCellID(xy1);
             Cell cell2 = ll2xy.getCellID(xy2);
-            LOG.info(distance + "\t" + cell1.xCell + "," + cell1.yCell + "\t" + cell2.xCell + ","
-                     + cell2.yCell);
 
-            String start = pieces[2];
-            String end = pieces[3];
-            LOG.info("Start time is " + start + " and end time is " + end);
+            String start = pieces[5];
+            String end = pieces[6];
             TripEvent tripEvent =
                      new TripEvent(extractDateTime(start), extractDateTime(end), cell1, cell2,
                               distance);
-            
+
             Frame frame = new Frame();
-            frame.setNewTripEvent(tripEvent);
+            Frame.tripEvent = tripEvent;
             ExecutorService service = Executors.newSingleThreadExecutor();
             service.submit(frame);
 
@@ -114,28 +106,13 @@ public class LL2XY {
       LOG.info("Done!!!");
    }
 
-   private static Calendar extractDateTime(String dateTimeStr) throws Exception {
-
-      Pattern datePatt =
-               Pattern.compile("([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})\\s([0-9]{1,2}):([0-9]{1,2}):([0-9]{1,2})");
-
-      int month, date, year, hour, minute;
-      Matcher m = datePatt.matcher(dateTimeStr);
-      if (m.matches()) {
-         month = Integer.parseInt(m.group(1));
-         date = Integer.parseInt(m.group(2));
-         year = Integer.parseInt(m.group(3));
-         hour = Integer.parseInt(m.group(4));
-         minute = Integer.parseInt(m.group(5));
-
-         LOG.debug("DateTime [" + dateTimeStr + "] extracted to - Month = " + month + ", Date = "
-                  + date + ", Year = " + year + ", Hour = " + hour + ", Minute = " + minute);
-
-         Calendar calendar = Calendar.getInstance();
-         calendar.set(year, month, date, hour, minute);
-         return calendar;
-      } else {
-         throw new Exception();
+   private static Date extractDateTime(String dateTimeStr) {
+      try {
+         return SIMPLE_DATE_FORMAT.parse(dateTimeStr);
+      } catch (ParseException e) {
+         LOG.error("Invalid date - " + dateTimeStr);
+         e.printStackTrace();
+         return null;
       }
    }
 
@@ -176,18 +153,6 @@ public class LL2XY {
        */
       return Math.sqrt(((xy2.xx - xy1.xx) * (xy2.xx - xy1.xx))
                + ((xy2.yy - xy1.yy) * (xy2.yy - xy1.yy)));
-   }
-
-   private ArrayList<String> readFile(String fname) throws IOException {
-      ArrayList<String> list = new ArrayList<String>();
-      BufferedReader br = new BufferedReader(new FileReader(new File(fname)));
-      String line = "";
-      while ((line = br.readLine()) != null) {
-         list.add(line);
-      }
-
-      LOG.info("Read " + list.size() + " entries");
-      return list;
    }
 
    private Cell getCellID(XY xy) {
