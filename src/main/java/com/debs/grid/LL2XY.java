@@ -1,19 +1,12 @@
 package com.debs.grid;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Calendar;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.LineIterator;
@@ -26,10 +19,8 @@ import org.apache.log4j.Logger;
  */
 
 public class LL2XY {
+   private static Window window = new Window();
 
-	
-	private static Window window = new Window(); 
-	
    // private Double sLat = 40.757977;
    // private Double sLong = -73.978165;
    private Double oLat = 41.474937;
@@ -38,6 +29,9 @@ public class LL2XY {
    private Double angle = 0.0;
    private static Logger LOG = Logger.getLogger(LL2XY.class);
    private static Map<String, String> ll2xyConfigMap = new HashMap<String, String>();
+   private static int count = 0;
+   private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat(
+            "M/dd/yyyy hh:mm");
 
    public static void main(String[] args) throws Exception {
       Double sLat1 = 40.756775;
@@ -71,20 +65,23 @@ public class LL2XY {
             Double distance = (ll2xy.getEuclideanDistance(xy1, xy2)) / 1000;
             Cell cell1 = ll2xy.getCellID(xy1);
             Cell cell2 = ll2xy.getCellID(xy2);
-            LOG.info(distance + "\t" + cell1.xCell + "," + cell1.yCell + "\t" + cell2.xCell + ","
-                     + cell2.yCell);
-            
-            String start = pieces[5];
-            String end = pieces[6];		
-            LOG.info("Start time is " + start + " and end time is " + end);  
-            
-            LOG.info(start.matches("^\\d{1,2}/\\d{1,2}/2013\\s\\d{1,2}:\\d{1,2}$"));
+            LOG.info("Line number " + (++count) + " -> " + distance + "\t(" + cell1.xCell + ","
+                     + cell1.yCell + ")\t(" + cell2.xCell + "," + cell2.yCell + ")");
 
-            TripEvent tripEvent = new TripEvent(extractDateTime(start), extractDateTime(end), cell1, cell2, distance);
+            /*
+             * for debugging using breakpoint
+             */
+            if (count == 3590) {
+               LOG.info("Am here");
+            }
+            String start = pieces[5];
+            String end = pieces[6];
+
+            TripEvent tripEvent =
+                     new TripEvent(extractDateTime(start), extractDateTime(end), cell1, cell2,
+                              distance);
             window.addNewTripEvent(tripEvent);
-            
-            
-            
+
          } catch (java.lang.NumberFormatException e) {
             LOG.error("Invalid line - " + entry);
          }
@@ -96,40 +93,16 @@ public class LL2XY {
       // LOG.info(xy1);
       // LOG.info(xy2);
       // LOG.info(distance);
-      
-          
       LOG.info("Done!!!");
-      
-      
-      
-      
-      
    }
-   
-   private static Calendar extractDateTime(String dateTimeStr) throws Exception {
-	   
-	   Pattern datePatt = Pattern.compile("([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})\\s([0-9]{1,2}):([0-9]{1,2})");
-	   
-	   int month, date, year, hour, minute;
-       Matcher m = datePatt.matcher(dateTimeStr);
-       if (m.matches()) {
-          month   = Integer.parseInt(m.group(1));
-          date = Integer.parseInt(m.group(2));
-          year  = Integer.parseInt(m.group(3));
-          hour  = Integer.parseInt(m.group(4));
-          minute  = Integer.parseInt(m.group(5));
-         
-         LOG.debug("DateTime [" + dateTimeStr + "] extracted to - Month = " + month + ", Date = " + date + ", Year = " + year + ", Hour = " + hour + ", Minute = " + minute);
-         
-         Calendar calendar = Calendar.getInstance();
-         calendar.set(year, month, date, hour, minute);
-         return calendar;
-       }
-       else {
-    	   throw new Exception();
-       }
 
-
+   private static Date extractDateTime(String dateTimeStr) {
+      try {
+         return SIMPLE_DATE_FORMAT.parse(dateTimeStr);
+      } catch (Exception e) {
+         LOG.error("Invalid date - " + dateTimeStr);
+         return null;
+      }
    }
 
    public XY computeLL2XY(Double srcLat, Double srcLong) {
@@ -171,18 +144,6 @@ public class LL2XY {
                + ((xy2.yy - xy1.yy) * (xy2.yy - xy1.yy)));
    }
 
-   private ArrayList<String> readFile(String fname) throws IOException {
-      ArrayList<String> list = new ArrayList<String>();
-      BufferedReader br = new BufferedReader(new FileReader(new File(fname)));
-      String line = "";
-      while ((line = br.readLine()) != null) {
-         list.add(line);
-      }
-
-      LOG.info("Read " + list.size() + " entries");
-      return list;
-   }
-
    private Cell getCellID(XY xy) {
       Long x = Math.round(xy.xx / 500);
       Long y = Math.round(xy.yy / 500);
@@ -190,8 +151,8 @@ public class LL2XY {
    }
 
    public class XY {
-	  public final Double xx;
-	  public final Double yy;
+      public final Double xx;
+      public final Double yy;
 
       public XY(Double x, Double y) {
          xx = x;
