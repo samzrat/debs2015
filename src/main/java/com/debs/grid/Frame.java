@@ -12,14 +12,16 @@ import org.apache.log4j.Logger;
  * @author Sameer
  * 
  */
-public class Frame implements Runnable {
+public class Frame {
 
    public static ConcurrentHashMap<String, Integer> routeMap =
             new ConcurrentHashMap<String, Integer>();
    public static List<TripEvent> currentEvents = Collections
             .synchronizedList(new ArrayList<TripEvent>());
    private static final Logger LOG = Logger.getLogger(Frame.class);
-   
+   private static final String DELIMITER = "~";
+   public static Integer eventId = 0;
+
    private Date startTime;
    private Date endTime;
 
@@ -37,17 +39,14 @@ public class Frame implements Runnable {
       return currentEvents;
    }
 
-   @Override
-   public void run() {
-      LOG.info("Size of current event list = " + currentEvents.size());
+   public void addNewTripEvent() {
+      LOG.info("EventID - " + eventId + ", Size of current event list = " + currentEvents.size());
       endTime = tripEvent.endTime;
 
       startTime = new Date(endTime.getTime() - 30 * 60000);
 
       currentEvents.add(tripEvent);
-      String newKey =
-               tripEvent.startCell.xCell.toString() + tripEvent.startCell.yCell.toString()
-                        + tripEvent.endCell.xCell.toString() + tripEvent.endCell.yCell.toString();
+      String newKey = formKey();
 
       Integer count = routeMap.get(newKey);
       if (count == null) {
@@ -55,6 +54,24 @@ public class Frame implements Runnable {
       } else {
          routeMap.put(newKey, ++count);
       }
+      try {
+         Thread.sleep(10);
+      } catch (InterruptedException e) {
+         e.printStackTrace();
+      }
+   }
 
+   public static String formKey() {
+      return new StringBuilder().append(tripEvent.startCell.xCell.toString()).append(DELIMITER)
+               .append(tripEvent.startCell.yCell.toString()).append(DELIMITER)
+               .append(tripEvent.endCell.xCell.toString()).append(DELIMITER)
+               .append(tripEvent.endCell.yCell.toString()).toString();
+   }
+
+   public static String formKey(TripEvent tripEvent) {
+      return new StringBuilder().append(tripEvent.startCell.xCell.toString()).append(DELIMITER)
+               .append(tripEvent.startCell.yCell.toString()).append(DELIMITER)
+               .append(tripEvent.endCell.xCell.toString()).append(DELIMITER)
+               .append(tripEvent.endCell.yCell.toString()).toString();
    }
 }

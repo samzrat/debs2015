@@ -12,8 +12,7 @@ public class TripEvent {
    public final Cell endCell;
    public final Double distance;
 
-   public TripEvent(Date startTime, Date endTime, Cell startCell, Cell endCell,
-            Double distance) {
+   public TripEvent(Date startTime, Date endTime, Cell startCell, Cell endCell, Double distance) {
       this.startTime = startTime;
       this.endTime = endTime;
       this.startCell = startCell;

@@ -8,7 +8,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -52,9 +51,9 @@ public class LL2XY {
       populateConfigs();
       BasicConfigurator.configure();
 
-//      ScheduledExecutorService scheduledThreadPool = Executors.newScheduledThreadPool(1);
-//      Poller poller = new Poller();
-//      scheduledThreadPool.scheduleAtFixedRate(poller, 1, 3, TimeUnit.SECONDS);
+      ScheduledExecutorService scheduledThreadPool = Executors.newScheduledThreadPool(1);
+      Poller poller = new Poller();
+      scheduledThreadPool.scheduleAtFixedRate(poller, 1, 3, TimeUnit.SECONDS);
 
       LineIterator it =
                FileUtils.lineIterator(new File(ll2xyConfigMap.get("grid.filename").toString()),
@@ -87,9 +86,9 @@ public class LL2XY {
                               distance);
 
             Frame frame = new Frame();
+            Frame.eventId = lineCount;
             Frame.tripEvent = tripEvent;
-            ExecutorService service = Executors.newSingleThreadExecutor();
-            service.submit(frame);
+            frame.addNewTripEvent();
 
          } catch (java.lang.NumberFormatException e) {
             LOG.error("Invalid line - " + entry);
