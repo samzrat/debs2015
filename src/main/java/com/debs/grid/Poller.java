@@ -23,19 +23,23 @@ public class Poller implements Runnable {
 
          LOG.info("Invoking poller(), size of current event list = " + Frame.currentEvents.size());
          Iterator<TripEvent> itr = Frame.currentEvents.iterator();
-         while (itr.hasNext()) {
+         synchronized (Frame.currentEvents) {
 
-            TripEvent tripEvent = itr.next();
-            if (tripEvent.endTime.before(startTime)) {
-               itr.remove();
+            while (itr.hasNext()) {
 
-               String key = Frame.formKey(tripEvent);
+               TripEvent tripEvent = itr.next();
+               if (tripEvent.endTime.before(startTime)) {
+                  itr.remove();
 
-               if (Frame.getRouteMap().containsKey(key)) {
-                  Frame.getRouteMap().put(key, Frame.getRouteMap().get(key) - 1);
-                  if (Frame.getRouteMap().get(key) == 0) {
-                     LOG.info("Removing key - " + key);
-                     Frame.getRouteMap().remove(key);
+                  String key = Frame.formKey(tripEvent);
+
+                  if (Frame.getRouteMap().containsKey(key)) {
+
+                     Frame.getRouteMap().put(key, Frame.getRouteMap().get(key) - 1);
+                     if (Frame.getRouteMap().get(key) == 0) {
+                        LOG.info("Removing key - " + key);
+                        Frame.getRouteMap().remove(key);
+                     }
                   }
                }
             }

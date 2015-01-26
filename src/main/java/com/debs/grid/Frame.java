@@ -39,7 +39,7 @@ public class Frame {
       return currentEvents;
    }
 
-   public void addNewTripEvent() {
+   public synchronized void addNewTripEvent() {
       LOG.info("EventID - " + eventId + ", Size of current event list = " + currentEvents.size());
       endTime = tripEvent.endTime;
 
