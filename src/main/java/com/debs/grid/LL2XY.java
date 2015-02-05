@@ -144,7 +144,7 @@ public class LL2XY {
                + ((xy2.yy - xy1.yy) * (xy2.yy - xy1.yy)));
    }
 
-   private Cell getCellID(XY xy) {
+   public Cell getCellID(XY xy) {
       Long x = Math.round(xy.xx / 500);
       Long y = Math.round(xy.yy / 500);
       return new Cell(x, y);
