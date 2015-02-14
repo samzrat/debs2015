@@ -33,9 +33,12 @@ class RouteCountActor extends Actor with ActorLogging {
 	     
 	case DecrementRouteCountMsg(tripEvent: TripEvent) => 
 	   //log.info("Decrement")
-	   routeCountMap.contains(Route(tripEvent.startCell, tripEvent.endCell)) match {
+	   val route = Route(tripEvent.startCell, tripEvent.endCell)
+	   routeCountMap.contains(route) match {
 	     case true => 
-	       routeCountMap += Route(tripEvent.startCell, tripEvent.endCell) -> (routeCountMap(Route(tripEvent.startCell, tripEvent.endCell))-1)
+	       routeCountMap += route -> (routeCountMap(route)-1)
+	       if(routeCountMap(route)>= tenthBestCount-5) 
+	         topTenRoutesActor ! TopTenRoutesActor.PossibleTopperMsg(route, routeCountMap(route))
 	     case false =>
 	       throw new Exception()
 	   }
