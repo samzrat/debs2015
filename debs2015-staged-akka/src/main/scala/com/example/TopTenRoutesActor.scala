@@ -10,6 +10,8 @@ import scala.util.control.Breaks._
 class TopTenRoutesActor extends Actor with ActorLogging {
   import TopTenRoutesActor._
   
+  var topRoutesList = ListBuffer[Tuple2[Route, Int]]()
+  
   var topRoutesArray:Array[Option[Tuple2[Route, Int]]] = new Array[Option[Tuple2[Route, Int]]](10)
   for(i <- 0 to 10-1)
 	  topRoutesArray(i) = None
@@ -17,9 +19,11 @@ class TopTenRoutesActor extends Actor with ActorLogging {
   var bestCount = 0
   var tenthBestCount = 0 
   
+  
+  
   def receive = {
     case PossibleTopperMsg(potentialRoute: Route, potentialRouteCount: Int) =>
-      //println("PossibleTopperMsg " + potentialRouteCount)
+      println("PossibleTopperMsg " + potentialRouteCount)
       //println("SIZE= " + topRoutesArray.filter(_ != None).size)
       topRoutesArray.filter(_ != None).size match {
         case 0 =>
@@ -38,7 +42,7 @@ class TopTenRoutesActor extends Actor with ActorLogging {
                     topRoutesArray(i) = Some(Tuple2(potentialRoute, potentialRouteCount))
                     for(j <- i to 10-2) {
                       if(topRoutesArray(j).get._2 > topRoutesArray(j+1).get._2) {
-                        println("INCREMENT " + topRoutesArray(j).get._2 + "    " + topRoutesArray(j+1).get._2)
+                        //println("INCREMENT " + topRoutesArray(j).get._2 + "    " + topRoutesArray(j+1).get._2)
                         val temp = topRoutesArray(j)
                         topRoutesArray(j) = topRoutesArray(j+1)
                         topRoutesArray(j+1) = temp
@@ -46,7 +50,7 @@ class TopTenRoutesActor extends Actor with ActorLogging {
                     }
                     for(j <- i to 1 by -1) {
                       if(topRoutesArray(j-1) != None && topRoutesArray(j).get._2 < topRoutesArray(j-1).get._2) {
-                        println("DECREMENT " + topRoutesArray(j).get._2 + "    " + topRoutesArray(j-1).get._2)
+                        //println("DECREMENT " + topRoutesArray(j).get._2 + "    " + topRoutesArray(j-1).get._2)
                         val temp = topRoutesArray(j)
                         topRoutesArray(j) = topRoutesArray(j-1)
                         topRoutesArray(j-1) = temp
