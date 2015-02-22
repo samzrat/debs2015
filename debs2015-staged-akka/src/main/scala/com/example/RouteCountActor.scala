@@ -20,7 +20,7 @@ class RouteCountActor extends Actor with ActorLogging {
   def receive = {
   	case IncrementRouteCountMsg(tripEvent: TripEvent) => 
 	   //log.info("Increment")
-	   val route = Route(tripEvent.startCell, tripEvent.endCell)
+	   val route = Route(tripEvent.grid500Cells.startCell, tripEvent.grid500Cells.endCell)
 	   routeCountMap.contains(route) match {
 	     case true => 
 	       routeCountMap += route -> (routeCountMap(route)+1)
@@ -33,7 +33,7 @@ class RouteCountActor extends Actor with ActorLogging {
 	     
 	case DecrementRouteCountMsg(tripEvent: TripEvent) => 
 	   //log.info("Decrement")
-	   val route = Route(tripEvent.startCell, tripEvent.endCell)
+	   val route = Route(tripEvent.grid500Cells.startCell, tripEvent.grid500Cells.endCell)
 	   routeCountMap.contains(route) match {
 	     case true => 
 	       routeCountMap += route -> (routeCountMap(route)-1)

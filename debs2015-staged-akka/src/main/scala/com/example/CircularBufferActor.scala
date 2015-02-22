@@ -11,8 +11,9 @@ import java.text.SimpleDateFormat
 import scala.collection.mutable.Stack
 
 case class Cell (xCell: Int, yCell: Int)
+case class TripCells(startCell: Cell, endCell: Cell)
 case class XY (xx: Double, yy: Double)
-case class TripEvent (startTime: Date, endTime: Date, startCell: Cell, endCell: Cell, distance: Double)
+case class TripEvent (startTime: Date, endTime: Date, grid500Cells: TripCells, grid250Cells: TripCells)
 class CircularBufferPointer(var position: Int, var time: Option[Date]) {}
 
 class CircularBufferActor extends Actor with ActorLogging {
@@ -43,27 +44,27 @@ class CircularBufferActor extends Actor with ActorLogging {
     for (line <- fileSource.getLines) {
       
         val tripEvent = DataExtractor.extractTripEventData(line)
-      
-        routeCountActor ! RouteCountActor.IncrementRouteCountMsg(tripEvent)
+     if(tripEvent != None)  {
+        routeCountActor ! RouteCountActor.IncrementRouteCountMsg(tripEvent.get)
         head.position match {
           case -1 => 
             head.position = 0
-            head.time = Some(tripEvent.endTime)
+            head.time = Some(tripEvent.get.endTime)
             tail.position = 0
-            tail.time = Some(tripEvent.endTime)
+            tail.time = Some(tripEvent.get.endTime)
             println("Head= " + head.position + "      Tail= " + tail.position)
           case  _ => 
-            ((tripEvent.endTime.getTime() - head.time.get.getTime())/1000) match {
+            ((tripEvent.get.endTime.getTime() - head.time.get.getTime())/1000) match {
               case 0   => 
                 //println("Same data => head_time: " + head.time + ", incoming_trip_time: " + tripEvent.endTime)
-                circularBuffer(head.position).push(tripEvent)
-                head.time = Some(tripEvent.endTime)
+                circularBuffer(head.position).push(tripEvent.get)
+                head.time = Some(tripEvent.get.endTime)
               case x if x > 0 => 
                 //println("X=" + x + " incoming_trip_time GREATER => head_time: " + head.time + ", incoming_trip_time: " + tripEvent.endTime)
                 
-                head.time = Some(tripEvent.endTime)
+                head.time = Some(tripEvent.get.endTime)
                 head.position = (head.position+x.toInt) % circularBufferSize
-                circularBuffer(head.position).push(tripEvent)
+                circularBuffer(head.position).push(tripEvent.get)
                 val oldTailPosition = tail.position 
                 //println("Date comparision = " + (head.time.get.getTime() - tail.time.get.getTime())/1000 + "            New Event date = " + tripEvent.endTime)
                 if((head.time.get.getTime() - tail.time.get.getTime())/1000 > circularBufferSize )
@@ -113,7 +114,7 @@ class CircularBufferActor extends Actor with ActorLogging {
             
             
         }
-        
+     } 
         
         newlineCount += 1
     }
