@@ -10,7 +10,7 @@ import java.text.ParseException
 import java.text.SimpleDateFormat
 import scala.collection.mutable.Stack
 
-case class Cell (xCell: Long, yCell: Long)
+case class Cell (xCell: Int, yCell: Int)
 case class XY (xx: Double, yy: Double)
 case class TripEvent (startTime: Date, endTime: Date, startCell: Cell, endCell: Cell, distance: Double)
 class CircularBufferPointer(var position: Int, var time: Option[Date]) {}

@@ -72,7 +72,7 @@ object DataExtractor {
       return new XY(xx, yy)
   }
   
-  def getCellID(xy: XY): Cell = new Cell(Math.round(xy.xx / 500), Math.round(xy.yy / 500))
+  def getCellID(xy: XY): Cell = new Cell(Math.round(xy.xx / 500).toInt, Math.round(xy.yy / 500).toInt)
    
   
   def metersDegLong(x: Double): Double = {
