@@ -18,43 +18,42 @@ object DataExtractor {
     implicit val formatter = NumberFormat.getInstance(Locale.ENGLISH)
     
         val tripData = line.split(",")  
-
-        val startTime = tripData(2)
-        val endTime   = tripData(3)
-        
-        val sLong1 = parseDouble(tripData(6)) 
-        val sLat1 = parseDouble(tripData(7))
-        val sLong2 = parseDouble(tripData(8))
-        val sLat2 = parseDouble(tripData(9))
-        
-        if(sLong1==None || sLat1==None || sLong2==None || sLat2==None)
-          return None
-        
-        val grid500Cells =  (grid500.getCell(sLong1.get, sLat1.get), grid500.getCell(sLong2.get, sLat2.get)) match {
-          case (startCell, endCell) if(startCell==None || endCell==None) => None
-          case (startCell, endCell) => Some(TripCells(startCell.get, endCell.get))   
-        }
-        
-        val grid250Cells =  (grid250.getCell(sLong1.get, sLat1.get), grid250.getCell(sLong2.get, sLat2.get)) match {
-          case (startCell, endCell) if(startCell==None || endCell==None) => None
-          case (startCell, endCell) => Some(TripCells(startCell.get, endCell.get))   
-        }
+       
+        (parseDouble(tripData(6)), parseDouble(tripData(7)), parseDouble(tripData(8)),parseDouble(tripData(9))) match {
+          case (a, b, c, d) if(a==None || b==None || c==None || d==None) => return None
+          case (Some(sLong1), Some(sLat1), Some(sLong2), Some(sLat2)) => {
             
-                
-        (grid500Cells, grid250Cells) match {
-          case (x, y) if(x==None || y==None) => None
-          case (x, y) => Some(TripEvent(extractDateTime(startTime), extractDateTime(endTime), x.get, y.get))
+            (getGrid500Cells(sLong1, sLat1, sLong2, sLat2), getGrid250Cells(sLong1, sLat1, sLong2, sLat2), extractDateTime(tripData(2)), extractDateTime(tripData(3))) match {
+              case (a, b, c, d) if(a==None || b==None || c==None || d==None) => return None
+              case (Some(grid500Cells), Some(grid250Cells), Some(startTime), Some(endTime)) => return Some(TripEvent(startTime, endTime, grid500Cells, grid250Cells))
+            }
+          }
         }
   }
   
-  def extractDateTime(dateTimeStr: String): Date = {
+  def getGrid500Cells(sLong1: Double, sLat1: Double, sLong2: Double, sLat2: Double): Option[TripCells] = {
+    (grid500.getCell(sLong1, sLat1), grid500.getCell(sLong2, sLat2)) match {
+      case (None, Some(_)) | (Some(_), None) | (None, None)=> return None
+      case (startCell, endCell) => Some(TripCells(startCell.get, endCell.get))   
+    }
+  }
+  
+  def getGrid250Cells(sLong1: Double, sLat1: Double, sLong2: Double, sLat2: Double): Option[TripCells] = {
+    (grid250.getCell(sLong1, sLat1), grid500.getCell(sLong2, sLat2)) match {
+      case (None, Some(_)) | (Some(_), None) | (None, None)=> return None
+      case (startCell, endCell) => Some(TripCells(startCell.get, endCell.get))   
+    }
+  }
+  
+  
+  def extractDateTime(dateTimeStr: String): Option[Date] = {
       try {
-         return SIMPLE_DATE_FORMAT.parse(dateTimeStr);
+         Some(SIMPLE_DATE_FORMAT.parse(dateTimeStr))
       }  catch {
          case ex: ParseException =>{
             println("Invalid date - " + dateTimeStr);
             ex.printStackTrace();
-            return null;
+            None
          }
       }
    }

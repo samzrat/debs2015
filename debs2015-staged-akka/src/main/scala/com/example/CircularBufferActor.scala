@@ -12,9 +12,8 @@ import scala.collection.mutable.Stack
 
 case class Cell (xCell: Int, yCell: Int)
 case class TripCells(startCell: Cell, endCell: Cell)
-case class XY (xx: Double, yy: Double)
 case class TripEvent (startTime: Date, endTime: Date, grid500Cells: TripCells, grid250Cells: TripCells)
-class CircularBufferPointer(var position: Int, var time: Option[Date]) {}
+case class BufferEntry(time: Option[Date], tripEventStack: Stack[TripEvent])
 
 class CircularBufferActor extends Actor with ActorLogging {
   import CircularBufferActor._
@@ -22,10 +21,14 @@ class CircularBufferActor extends Actor with ActorLogging {
   
   val circularBufferSize = 1800
   
-  val circularBuffer: Array[Stack[TripEvent]] = new Array[Stack[TripEvent]](circularBufferSize)
-  var head: CircularBufferPointer = new CircularBufferPointer(-1, None)
-  val tail: CircularBufferPointer = new CircularBufferPointer(-1, None)
+  val circularBuffer: Array[BufferEntry] = new Array[BufferEntry](circularBufferSize)
+  var head_30MinWindow: Int = -1
+  val tail_30MinWindow: Int = -1
   
+  var head_15MinWindow: Int = -1
+  val tail_15MinWindow: Int = -1
+  
+  init()
 
   def receive = {
   	case BeginProcessing => 
@@ -37,14 +40,20 @@ class CircularBufferActor extends Actor with ActorLogging {
   
   def process() {
         
-    init()
+    
     
     val fileSource = Source.fromFile("sorted_data.csv")
     var newlineCount = 0L
     for (line <- fileSource.getLines) {
-      
-        val tripEvent = DataExtractor.extractTripEventData(line)
-     if(tripEvent != None)  {
+/*      DataExtractor.extractTripEventData(line) match {
+        case None =>
+        case Some(tripEvent) => {
+          routeCountActor ! RouteCountActor.IncrementRouteCountMsg(tripEvent)
+        }  
+      }
+  */    
+ /*     
+
         routeCountActor ! RouteCountActor.IncrementRouteCountMsg(tripEvent.get)
         head.position match {
           case -1 => 
@@ -74,7 +83,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                    tail.position = (tail.position+tailJump.toInt) % circularBufferSize
                 }
               if(oldTailPosition < tail.position-1) {
-                for(y <- oldTailPosition to tail.position-1) {
+                for(y <- oldTailPosition until tail.position) {
                   val stackSize = circularBuffer(y).size
                   for(z <- 0 to stackSize-1) {
                     val event = circularBuffer(y).pop()
@@ -84,7 +93,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                 }
               }
               else if(oldTailPosition > tail.position-1){
-                for(y <- oldTailPosition to circularBufferSize-1) {
+                for(y <- oldTailPosition until circularBufferSize) {
                   val stackSize = circularBuffer(y).size
                   for(z <- 0 to stackSize-1) {
                     val event = circularBuffer(y).pop()
@@ -92,7 +101,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                     routeCountActor ! RouteCountActor.DecrementRouteCountMsg(event)
                   }
                 }
-                for(y <- 0 to tail.position-1) {
+                for(y <- 0 until tail.position) {
                   val stackSize = circularBuffer(y).size
                   for(z <- 0 to stackSize-1) {
                     val event = circularBuffer(y).pop()
@@ -114,7 +123,7 @@ class CircularBufferActor extends Actor with ActorLogging {
             
             
         }
-     } 
+     */
         
         newlineCount += 1
     }
@@ -122,8 +131,8 @@ class CircularBufferActor extends Actor with ActorLogging {
   }
   
   def init() {
-    for(i <- 0 to circularBufferSize-1)
-      circularBuffer(i) = new Stack[TripEvent]
+    for(i <- 0 until circularBufferSize)
+      circularBuffer(i) = BufferEntry(None, new Stack[TripEvent])
   }
   
   

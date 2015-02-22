@@ -22,12 +22,12 @@ class GridSpec(_system: ActorSystem)
 
   "A grid" should "return the right cell within boundaries" in {
 
-    new com.example.Grid(300, 150, 150, 300) getCell(320, 320) get match {
+    new Grid(300, 150, 150, 300) getCell(320, 320) get match {
       case Cell(x, y) => x should be (2)
                          y should be (2)
     }
     
-    new com.example.Grid(300, 150, 150, 300) getCell(155, 155) get match {
+    new Grid(300, 150, 150, 300) getCell(155, 155) get match {
       case Cell(x, y) => x should be (1)
                          y should be (1)
     }
@@ -35,9 +35,9 @@ class GridSpec(_system: ActorSystem)
   
   "A grid" should "not return any cell outside boundaries" in {
     
-    new com.example.Grid(300, 150, 150, 300) getCell(90001, 320) should be (None)
-    new com.example.Grid(300, -150, -150, 300) getCell(90001, 320) should be (None)
-    new com.example.Grid(300, -150, -150, 300) getCell(-90001, 320) should be (None)
+    new Grid(300, 150, 150, 300) getCell(90001, 320) should be (None)
+    new Grid(300, -150, -150, 300) getCell(90001, 320) should be (None)
+    new Grid(300, -150, -150, 300) getCell(-90001, 320) should be (None)
   }
 
   
