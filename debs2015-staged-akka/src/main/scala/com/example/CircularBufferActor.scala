@@ -59,8 +59,12 @@ class CircularBufferActor extends Actor with ActorLogging {
               circularBuffer(0).time =  Some(tripEvent.endTime)
               
             case _ => 
-              ((tripEvent.endTime.getTime() - circularBuffer(head).time.get.getTime()).toDouble/1000) match {
-                case 0 =>
+              //println(tripEvent.endTime +  "         " +  circularBuffer(head).time.get)
+              ((tripEvent.endTime.getTime() - circularBuffer(head).time.get.getTime())/1000) match {
+                case timeDiff if timeDiff < 0 => 
+                  println("incoming_trip_time LESSER => head_time: " + (circularBuffer(head)).time + ", incoming_trip_time: " + tripEvent.endTime)
+                  //ignore
+                case 0L =>
                   circularBuffer(head).tripEventStack.push(tripEvent)
                   circularBuffer(head).time = Some(tripEvent.endTime)
                 case timeDiff if timeDiff > 0 => 
@@ -81,7 +85,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                   }
                   circularBuffer(head).tripEventStack.push(tripEvent)
                   
-                  
+                  println(head)
                   
                   val old15TailPosition = tail_15MinWindow
                   if((circularBuffer(head).time.get.getTime() - circularBuffer(tail_15MinWindow).time.get.getTime())/1000 > (circularBufferSize/2) ) {
@@ -148,9 +152,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                     }
                   }
               }
-              case timeDiff if timeDiff < 0 => 
-                println("incoming_trip_time LESSER => head_time: " + (circularBuffer(head)).time + ", incoming_trip_time: " + tripEvent.endTime)
-                //ignore
+              
           }    
     
           
