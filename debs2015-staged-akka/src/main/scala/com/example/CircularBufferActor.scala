@@ -62,11 +62,11 @@ class CircularBufferActor extends Actor with ActorLogging {
               //println(tripEvent.endTime +  "         " +  circularBuffer(head).time.get)
               ((tripEvent.endTime.getTime() - circularBuffer(head).time.get.getTime())/1000) match {
                 case timeDiff if timeDiff < 0 => 
-                  println("incoming_trip_time LESSER => head_time: " + (circularBuffer(head)).time + ", incoming_trip_time: " + tripEvent.endTime)
-                  //ignore
+                //println("incoming_trip_time LESSER => head_time: " + (circularBuffer(head)).time + ", incoming_trip_time: " + tripEvent.endTime)
+                //ignore
                 case 0L =>
                   circularBuffer(head).tripEventStack.push(tripEvent)
-                  circularBuffer(head).time = Some(tripEvent.endTime)
+                  //circularBuffer(head).time = Some(tripEvent.endTime)
                 case timeDiff if timeDiff > 0 => 
                   val oldHead = head
                   head = (head+timeDiff.toInt) % circularBufferSize
@@ -85,7 +85,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                   }
                   circularBuffer(head).tripEventStack.push(tripEvent)
                   
-                  println(head)
+                  //println(head)
                   
                   val old15TailPosition = tail_15MinWindow
                   if((circularBuffer(head).time.get.getTime() - circularBuffer(tail_15MinWindow).time.get.getTime())/1000 > (circularBufferSize/2) ) {
@@ -119,12 +119,15 @@ class CircularBufferActor extends Actor with ActorLogging {
                       }
                     }
                   }
-                  
+                  //println(tail_15MinWindow)
                   
                   
                   val old30TailPosition = tail_30MinWindow
-                  if((circularBuffer(head).time.get.getTime() - circularBuffer(tail_30MinWindow).time.get.getTime())/1000 > circularBufferSize ) {
-                    val tailJump = ((circularBuffer(head).time.get.getTime() - circularBuffer(tail_30MinWindow).time.get.getTime())/1000) - circularBufferSize
+                  //println((tripEvent.endTime.getTime() - circularBuffer(tail_30MinWindow).time.get.getTime())/1000)
+                  //print("    " + circularBuffer(tail_30MinWindow).time.get.getTime())
+                  //print("    " + circularBuffer(head).time.get.getTime())
+                  if((circularBuffer(head).time.get.getTime() - circularBuffer(tail_30MinWindow).time.get.getTime())/1000 > (circularBufferSize) ) {
+                    val tailJump = ((circularBuffer(head).time.get.getTime() - circularBuffer(tail_30MinWindow).time.get.getTime())/1000) - (circularBufferSize)
                     tail_30MinWindow = (tail_30MinWindow+tailJump.toInt) % circularBufferSize
                     //circularBuffer(tail_30MinWindow).time.get.setTime(circularBuffer(tail_30MinWindow).time.get.getTime + tailJump.toInt*1000)
                   }
@@ -151,6 +154,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                       }
                     }
                   }
+                  println(tail_30MinWindow)
               }
               
           }    

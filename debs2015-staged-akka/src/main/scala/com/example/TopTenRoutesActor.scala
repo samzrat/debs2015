@@ -23,13 +23,13 @@ class TopTenRoutesActor extends Actor with ActorLogging {
   
   def receive = {
     case PossibleTopperMsg(potentialRoute: Route, potentialRouteCount: Int) =>
-      println("PossibleTopperMsg " + potentialRouteCount)
+      //println("PossibleTopperMsg " + potentialRouteCount)
       //println("SIZE= " + topRoutesArray.filter(_ != None).size)
       topRoutesArray.filter(_ != None).size match {
         case 0 =>
           topRoutesArray(9) = Some(Tuple2(potentialRoute, potentialRouteCount))
           sender ! RouteCountActor.NewTopRoutesRangeMsg(potentialRouteCount, 0)
-          println("ADDED THE FIRST STAR ROUTE")
+          //println("ADDED THE FIRST STAR ROUTE")
         case _ =>
           //println("EVALUATION OF STAR ROUTE")
           breakable { 
