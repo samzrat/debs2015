@@ -3,3 +3,7 @@
 .settings/
 gitcommand.txt
 target/
+activator*
+*.class
+*.log
+.cache

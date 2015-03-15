@@ -1,4 +1,4 @@
-package com.example
+package samzrat.debs2015
 
 
 import org.scalatest.{ BeforeAndAfterAll, FlatSpecLike, Matchers }

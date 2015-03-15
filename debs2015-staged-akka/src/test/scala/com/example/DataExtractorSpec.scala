@@ -1,8 +1,9 @@
-package com.example
+package samzrat.debs2015
 
 import org.scalatest.{ BeforeAndAfterAll, FlatSpecLike, Matchers }
 import akka.actor.{ Actor, Props, ActorSystem }
 import akka.testkit.{ ImplicitSender, TestKit, TestActorRef }
+import samzrat.debs2015.DataExtractor;
 import scala.concurrent.duration._
 
 class DataExtractorSpec(_system: ActorSystem)
