@@ -62,7 +62,7 @@ function onStartButtonClick(e) {
 }
 
 var margin = {top: 20, right: 20, bottom: 30, left: 40},
-    width = 960 - margin.left - margin.right,
+    width = 3660 - margin.left - margin.right,             //960
     height = 500 - margin.top - margin.bottom;
 
 
@@ -142,15 +142,15 @@ function type(d) {
 
 function setupWebSocket() { 
 	websocket = new WebSocket(wsUri); 
-	writeToScreen("Create new websocket");
+	//writeToScreen("Create new websocket");
 	websocket.onopen = function(evt) { onWebSocketOpen(evt) };
-	writeToScreen("Set websocket open handler");
+	//writeToScreen("Set websocket open handler");
 	websocket.onclose = function(evt) { onWebSocketClose(evt) };
-	writeToScreen("Set websocket close handler");
+	//writeToScreen("Set websocket close handler");
 	websocket.onmessage = function(evt) { onWebSocketMessage(evt) };
-	writeToScreen("Set websocket on msg handler");
+	//writeToScreen("Set websocket on msg handler");
 	websocket.onerror = function(evt) { onWebSocketError(evt) };
-	writeToScreen("Set websocket on error handler");
+	//writeToScreen("Set websocket on error handler");
 }
 
 function onWebSocketOpen(evt) { 
@@ -163,11 +163,12 @@ function onWebSocketClose(evt) {
 }
 
 function onWebSocketMessage(evt) { 
-	writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data+'</span>'); 
+	//writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data+'</span>'); 
 
-	data.push(JSON.parse(evt.data));
-	
-	var x = d3.scale.ordinal()
+	data = JSON.parse(evt.data);
+	//writeToScreen('<span style="color: blue;">RESPONSE: ' + data.length + width + height +'</span>'); 
+
+  var x = d3.scale.ordinal()
     .domain([0, data.length])
     .range([0, width]);
 
@@ -187,7 +188,7 @@ function onWebSocketMessage(evt) {
   //x.domain(data.map(function(d) { return d.letter; }));
   //y.domain([0, d3.max(data, function(d) { return d.frequency; })]);
   
-  svg.append("g")
+/*  svg.append("g")
       .attr("class", "x axis")
       .attr("transform", "translate(0," + height + ")")
       .call(xAxis);
@@ -201,13 +202,17 @@ function onWebSocketMessage(evt) {
       .attr("dy", ".71em")
       .style("text-anchor", "end")
       .text("Frequency");
+*/
+
+  svg.selectAll(".bar")
+      .data([]).exit().remove();
 
   svg.selectAll(".bar")
       .data(data)
-    .enter().append("rect")
+      .enter().append("rect")
       .attr("class", "bar")
-      .attr("x", function(d, i) { return width/data.length*i; })
-      .attr("width", width/data.length)
+      .attr("x", function(d, i) { return 10*i; /*return width/data.length*i;*/ })
+      .attr("width", 10) //width/data.length)
       .attr("y", function(d) { return y(d); })
       .attr("height", function(d) { return height - y(d); });
 }

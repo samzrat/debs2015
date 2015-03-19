@@ -27,6 +27,7 @@ import play.api.libs.iteratee.Iteratee
 import play.api.libs.iteratee.Concurrent
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.functional.syntax._
+import scala.collection.mutable.ListBuffer
 
 case class Cell (xCell: Int, yCell: Int)
 case class TripCells(startCell: Cell, endCell: Cell)
@@ -48,6 +49,7 @@ class CircularBufferActor extends Actor with ActorLogging {
   val window_15Min = 900
   val window_30Min = 1800
   
+  val circularBufferState = new ListBuffer[Int]()
   
   val circularBuffer: Array[BufferEntry] = new Array[BufferEntry](circularBufferSize)
   
@@ -233,6 +235,11 @@ class CircularBufferActor extends Actor with ActorLogging {
                   circularBuffer(head.location).tripEventStack.push(tripEvent)
                   
                   //println("head = " + head.location + "              tail_15 = " + tail_15Min.location + "              tail_30 = " + tail_30Min.location)
+                  for(i <- 0 until circularBufferSize)
+                    circularBufferState += circularBuffer(i).tripEventStack.size
+                  channel push Json.toJson(circularBufferState).toString
+                  circularBufferState.clear()
+                  
               }
               newlineCount += 1
               //println("head = " + head.location + "              tail_15 = " + tail_15Min.location + "              tail_30 = " + tail_30Min.location)
