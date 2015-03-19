@@ -9,12 +9,35 @@ import java.util.Date
 import java.text.ParseException
 import java.text.SimpleDateFormat
 import scala.collection.mutable.Stack
+import play.api.libs.iteratee.Enumerator
+import play.api.libs.iteratee.Iteratee
+import play.api.libs.iteratee.Concurrent
+import play.api.libs.json._
+import akka.actor.{Actor, ActorRef, Props}
+import akka.event.Logging
+import scala.concurrent.duration._
+import akka.util.Timeout 
+import akka.pattern.ask
+import scala.concurrent.Await
+import java.util.UUID
+import org.apache.commons.codec.digest.DigestUtils
+import javax.xml.bind.annotation.adapters.HexBinaryAdapter
+import play.api.libs.iteratee.Enumerator
+import play.api.libs.iteratee.Iteratee
+import play.api.libs.iteratee.Concurrent
+import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.functional.syntax._
 
 case class Cell (xCell: Int, yCell: Int)
 case class TripCells(startCell: Cell, endCell: Cell)
 case class TripEvent (startTime: Date, endTime: Date, grid500Cells: TripCells, grid250Cells: TripCells, fareAmount: Double, tipAmount: Double)
 class BufferEntry(val tripEventStack: Stack[TripEvent]) {}
 class Pointer(var time: Date, var location: Int) {}
+
+case class GetIterateeAndEnumerator()
+case class IterateeAndEnumerator(in: Iteratee[String,Unit], out: Enumerator[String])
+case class WebsocketMsg(msg: String)
+case class CircularBufferState(state: List[Int])
 
 class CircularBufferActor extends Actor with ActorLogging {
   import CircularBufferActor._
@@ -35,18 +58,70 @@ class CircularBufferActor extends Actor with ActorLogging {
   
   init()
 
+  implicit class PathAdditions(path: JsPath) {
+
+  def readNullableIterable[A <: Iterable[_]](implicit reads: Reads[A]): Reads[A] =
+    Reads((json: JsValue) => path.applyTillLast(json).fold(
+      error => error,
+      result => result.fold(
+        invalid = (_) => reads.reads(JsArray()),
+        valid = {
+          case JsNull => reads.reads(JsArray())
+          case js => reads.reads(js).repath(path)
+        })
+    ))
+
+  def writeNullableIterable[A <: Iterable[_]](implicit writes: Writes[A]): OWrites[A] =
+    OWrites[A]{ (a: A) =>
+      if (a.isEmpty) Json.obj()
+      else JsPath.createObj(path -> writes.writes(a))
+    }
+
+  /** When writing it ignores the property when the collection is empty,
+    * when reading undefined and empty jsarray becomes an empty collection */
+  def formatNullableIterable[A <: Iterable[_]](implicit format: Format[A]): OFormat[A] =
+    OFormat[A](r = readNullableIterable(format), w = writeNullableIterable(format))
+
+  }
+  
+  val (out,channel) = Concurrent.broadcast[String]
+
+  val in = Iteratee.foreach[String] {
+      msg => println(msg)
+             //the Enumerator returned by Concurrent.broadcast subscribes to the channel and will 
+             //receive the pushed messages
+             log.info("Entered Iteratee closure")
+           context.self ! WebsocketMsg(msg)
+  }
+  
   def receive = {
   	case BeginProcessing => 
 	    log.info("Starting")
 	    process()
-   
-  	
-  }	
+    case GetIterateeAndEnumerator => 
+       sender ! IterateeAndEnumerator(in, out)
+    case WebsocketMsg(msg: String) => {
+      val msgJson = Json.parse(msg)
+      val messageType: String = (msgJson \ "msgType").as[String]
+       
+      messageType match {
+        case "startProcessing" => 
+          context.self ! BeginProcessing
+          //channel push("Simulation started on server")
+        case _ => throw new Exception()  
+      }
+    }
+    case _ => throw new Exception()  
+    
+
+  } 
+  
+  
   
   def process() {
         
-    
-    
+    channel push Json.toJson(List(145, 7, 123, 78, 156, 234)).toString
+        
     val fileSource = Source.fromFile("sorted_data.csv")
     var newlineCount = 0L
     for (line <- fileSource.getLines) {

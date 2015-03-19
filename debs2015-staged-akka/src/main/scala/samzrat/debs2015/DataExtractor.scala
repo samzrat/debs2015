@@ -7,8 +7,6 @@ import java.util.Date
 import java.text.ParseException
 import java.text.SimpleDateFormat
 
-import samzrat.debs2015.Grid;
-
 object DataExtractor {
 
   val grid500 = new Grid(500, 41.474937, -74.913585, 300)

@@ -1,7 +1,6 @@
 package samzrat.debs2015
 
 import akka.actor.ActorSystem
-import samzrat.debs2015.CircularBufferActor;
 import scala.io.Source
 import akka.actor.ActorLogging
 

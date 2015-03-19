@@ -40,6 +40,26 @@
   <button type="button" id="startButton">Start</button>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
+var wsUri = "ws://localhost:9000/websocket"; 
+var output; 
+var websocket;
+var lineData = [];
+
+window.onload = function(){ 
+	output = document.getElementById("output"); 
+	var startButton = document.getElementById('startButton');
+	setupWebSocket();
+	startButton.onclick = function(evt) { onStartButtonClick(evt) };
+};
+
+function onStartButtonClick(e) { 
+	e.preventDefault();
+	  
+	  var submitData = "{\"msgType\" : \"startProcessing\"}";	
+	  doSend(submitData);
+
+	  return false;
+}
 
 var margin = {top: 20, right: 20, bottom: 30, left: 40},
     width = 960 - margin.left - margin.right,
@@ -120,7 +140,99 @@ function type(d) {
   return d;
 }
 
+function setupWebSocket() { 
+	websocket = new WebSocket(wsUri); 
+	writeToScreen("Create new websocket");
+	websocket.onopen = function(evt) { onWebSocketOpen(evt) };
+	writeToScreen("Set websocket open handler");
+	websocket.onclose = function(evt) { onWebSocketClose(evt) };
+	writeToScreen("Set websocket close handler");
+	websocket.onmessage = function(evt) { onWebSocketMessage(evt) };
+	writeToScreen("Set websocket on msg handler");
+	websocket.onerror = function(evt) { onWebSocketError(evt) };
+	writeToScreen("Set websocket on error handler");
+}
 
-    </script>			     
+function onWebSocketOpen(evt) { 
+	writeToScreen("CONNECTED"); 
+	
+}
+
+function onWebSocketClose(evt) {
+	writeToScreen("DISCONNECTED");
+}
+
+function onWebSocketMessage(evt) { 
+	writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data+'</span>'); 
+
+	data.push(JSON.parse(evt.data));
+	
+	var x = d3.scale.ordinal()
+    .domain([0, data.length])
+    .range([0, width]);
+
+  var y = d3.scale.linear()
+    .domain([0, d3.max(data)])
+    .range([height, 0]);
+
+  var xAxis = d3.svg.axis()
+  .scale(x)
+  .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+  .scale(y)
+  .orient("left")
+  .ticks(10, "%");
+  
+  //x.domain(data.map(function(d) { return d.letter; }));
+  //y.domain([0, d3.max(data, function(d) { return d.frequency; })]);
+  
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Frequency");
+
+  svg.selectAll(".bar")
+      .data(data)
+    .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", function(d, i) { return width/data.length*i; })
+      .attr("width", width/data.length)
+      .attr("y", function(d) { return y(d); })
+      .attr("height", function(d) { return height - y(d); });
+}
+		
+	      
+
+
+function onWebSocketError(evt) { 
+	writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data); 
+}
+
+function doSend(message) { 
+	writeToScreen("SENT: " + message);
+	websocket.send(message);
+}
+
+function writeToScreen(message) {
+	var pre = document.createElement("p"); 
+	pre.style.wordWrap = "break-word";
+	pre.innerHTML = message; 
+	output.appendChild(pre);
+}
+
+
+    </script>		
+    <h2>WebSocket Test</h2>  <div id="output"></div>	     
     </body>
 </html>
