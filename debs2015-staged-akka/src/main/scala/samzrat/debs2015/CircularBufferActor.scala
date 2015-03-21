@@ -235,8 +235,17 @@ class CircularBufferActor extends Actor with ActorLogging {
                   circularBuffer(head.location).tripEventStack.push(tripEvent)
                   
                   //println("head = " + head.location + "              tail_15 = " + tail_15Min.location + "              tail_30 = " + tail_30Min.location)
-                  for(i <- 0 until circularBufferSize)
-                    circularBufferState += circularBuffer(i).tripEventStack.size
+                  var sum = 0
+                  var j = 0
+                  for(i <- 0 until circularBufferSize) {
+                    sum += circularBuffer(i).tripEventStack.size
+                    j += 1
+                    if(j==60) {
+                      circularBufferState += sum
+                      j = 0
+                      sum = 0
+                    }  
+                  }  
                   channel push Json.toJson(circularBufferState).toString
                   circularBufferState.clear()
                   

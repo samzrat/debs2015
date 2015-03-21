@@ -62,7 +62,7 @@ function onStartButtonClick(e) {
 }
 
 var margin = {top: 20, right: 20, bottom: 30, left: 40},
-    width = 3660 - margin.left - margin.right,             //960
+    width = 700 - margin.left - margin.right,             //960
     height = 500 - margin.top - margin.bottom;
 
 
@@ -211,8 +211,8 @@ function onWebSocketMessage(evt) {
       .data(data)
       .enter().append("rect")
       .attr("class", "bar")
-      .attr("x", function(d, i) { return 10*i; /*return width/data.length*i;*/ })
-      .attr("width", 10) //width/data.length)
+      .attr("x", function(d, i) { return width/data.length*i; })
+      .attr("width", width/data.length)
       .attr("y", function(d) { return y(d); })
       .attr("height", function(d) { return height - y(d); });
 }
