@@ -9,8 +9,8 @@ import java.text.SimpleDateFormat
 
 object DataExtractor {
 
-  val grid500 = new Grid(500, 41.474937, -74.913585, 300)
-  val grid250 = new Grid(250, 41.474937, -74.913585, 600)
+  val grid500 = new Grid(500, -74.913585, 41.474937, 300)
+  val grid250 = new Grid(250, -74.913585, 41.474937, 600)
   
   val SIMPLE_DATE_FORMAT: SimpleDateFormat = new SimpleDateFormat("yyyy-mm-dd hh:mm:ss");
     
