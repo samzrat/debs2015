@@ -85,7 +85,7 @@ class TopTenRoutesActor extends Actor with ActorLogging {
                     }  
                   }
                   topRoutesArray(i) = Some(Tuple2(potentialRoute, potentialRouteCount))
-                  println("New top ten route: count = " + potentialRouteCount)
+                  println("New top ten route: (" + potentialRoute.startCell + ", " + potentialRoute.endCell + ") count = " + potentialRouteCount)
                 
                   val someList = topRoutesArray.filter(_ != None)
                   val someListSize = topRoutesArray.filter(_ != None).size
