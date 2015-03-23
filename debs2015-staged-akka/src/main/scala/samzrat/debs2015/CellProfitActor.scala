@@ -13,33 +13,61 @@ import CellProfitActor._
   val cellProfitMap: Map[Cell,ProfitData] = Map()
   
   def receive = {
-	  case AddTripFareToCellProfitMsg(tripEvent: TripEvent) =>
-      val cell = tripEvent.grid250Cells.startCell
+    case IncrementEmptyTaxiMsg(tripEvent: TripEvent) =>
+      //println("IncrementEmptyTaxiMsg")
+      val cell = tripEvent.grid250Cells.endCell
       cellProfitMap.contains(cell) match {
         case true =>
-         cellProfitMap += cell -> ProfitData(cellProfitMap(cell).tripProfit.::(TripProfit(tripEvent.fareAmount + tripEvent.tipAmount, tripEvent.medallion)), cellProfitMap(cell).emptyTaxiCount)      
+         cellProfitMap += cell -> ProfitData(cellProfitMap(cell).tripProfitList, cellProfitMap(cell).emptyTaxiCount+1)      
+       case false =>
+         cellProfitMap += cell -> ProfitData(List(), 1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+      }
+      val profitability = calculateProfitability(cell: Cell, cellProfitMap(cell))
+    case DecrememtEmptyTaxiMsg(tripEvent: TripEvent) =>
+      //println("DecrememtEmptyTaxiMsg")
+      val cell = tripEvent.grid250Cells.endCell
+      cellProfitMap.contains(cell) match {
+        case true =>
+         if(cellProfitMap(cell).emptyTaxiCount==0) throw new Exception()
+         cellProfitMap += cell -> ProfitData(cellProfitMap(cell).tripProfitList, cellProfitMap(cell).emptyTaxiCount-1)      
+       case false =>
+         throw new Exception()
+      }
+      val profitability = calculateProfitability(cell: Cell, cellProfitMap(cell))  
+	  case AddTripFareToCellProfitMsg(tripEvent: TripEvent) =>
+      //println("AddTripFareToCellProfitMsg")
+      val cell = tripEvent.grid250Cells.startCell
+      cellProfitMap.contains(cell) match {                                                                                                                                                                                                                                                                                                                                                                                                                      
+        case true =>
+         cellProfitMap += cell -> ProfitData(cellProfitMap(cell).tripProfitList.::(TripProfit(tripEvent.fareAmount + tripEvent.tipAmount, tripEvent.medallion)), cellProfitMap(cell).emptyTaxiCount)      
        case false =>
          cellProfitMap += cell -> ProfitData(List(TripProfit(tripEvent.fareAmount + tripEvent.tipAmount, null)), 0)
       }
       val profitability = calculateProfitability(cell: Cell, cellProfitMap(cell))
     case RemoveTripFareFromCellProfitMsg(tripEvent: TripEvent)  =>
+      //println("RemoveTripFareFromCellProfitMsg")
       val cell = tripEvent.grid250Cells.startCell
       if(cellProfitMap.contains(cell)==false)
         throw new Exception()
-     
-      cellProfitMap += cell -> ProfitData(cellProfitMap(cell).tripProfit.filter(_.medallion != tripEvent.medallion), cellProfitMap(cell).emptyTaxiCount)
+      
+      cellProfitMap += cell -> ProfitData(cellProfitMap(cell).tripProfitList.filter(_.medallion != tripEvent.medallion), cellProfitMap(cell).emptyTaxiCount)
       val profitability = calculateProfitability(cell: Cell, cellProfitMap(cell))
     case _ => throw new Exception()  
   }	
   
   def calculateProfitability(cell: Cell, profitData: ProfitData): Double = {
-    val sortedProfitData = profitData.tripProfit.sortBy(_.profit)
-    val medianProfit: Double = sortedProfitData.size%2 match {
-      case 0 => (sortedProfitData(sortedProfitData.size/2-1).profit + sortedProfitData(sortedProfitData.size/2).profit)/2
-      case _ => sortedProfitData((sortedProfitData.size-1)/2).profit
-    }
-    val profitability = if (profitData.emptyTaxiCount!=0) medianProfit/profitData.emptyTaxiCount else Double.NaN
-    println("Profitability Cell(" + cell.xCell + ", " + cell.yCell + "): " + profitability + "   Median profit=" + medianProfit)
+    val sortedProfitData = profitData.tripProfitList.sortBy(_.profit)
+    val medianProfit: Double = 
+      if(sortedProfitData.size==0) Double.NaN 
+      else if(sortedProfitData.size==1) sortedProfitData(0).profit
+      else 
+        sortedProfitData.size%2 match {
+        case 0 => (sortedProfitData(sortedProfitData.size/2-1).profit + sortedProfitData(sortedProfitData.size/2).profit)/2
+        case _ => sortedProfitData((sortedProfitData.size-1)/2).profit
+      }
+    val profitability = if (profitData.emptyTaxiCount!=0 && !medianProfit.isNaN) medianProfit/profitData.emptyTaxiCount else Double.NaN
+    if(!medianProfit.isNaN && profitData.emptyTaxiCount!=0)
+      println("Profitability Cell(" + cell.xCell + ", " + cell.yCell + "): " + profitability + "   Median profit=" + medianProfit + "   EmptyTaxiCount=" + profitData.emptyTaxiCount)
     return profitability
   }  
   
@@ -50,8 +78,10 @@ object CellProfitActor {
   
   case class AddTripFareToCellProfitMsg(tripEvent: TripEvent)
   case class RemoveTripFareFromCellProfitMsg(tripEvent: TripEvent)
+  case class IncrementEmptyTaxiMsg(tripEvent: TripEvent)
+  case class DecrememtEmptyTaxiMsg(tripEvent: TripEvent)
   
   case class TripProfit(profit: Double, medallion: String)
-  case class ProfitData(tripProfit: List[TripProfit], emptyTaxiCount: Int)
+  case class ProfitData(tripProfitList: List[TripProfit], emptyTaxiCount: Int)
   
 }

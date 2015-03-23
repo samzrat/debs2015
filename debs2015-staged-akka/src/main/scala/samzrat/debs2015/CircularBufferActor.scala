@@ -135,6 +135,7 @@ class CircularBufferActor extends Actor with ActorLogging {
           tripEndTime = tripEvent.endTime.getTime()
           routeCountActor ! IncrementRouteCountMsg(tripEvent)
           cellProfitActor ! AddTripFareToCellProfitMsg(tripEvent)
+          cellProfitActor ! IncrementEmptyTaxiMsg(tripEvent)
           
           head.location match {
             case -1 => 
@@ -173,7 +174,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                         val clonedStack = circularBuffer(y).tripEventStack.clone()
                         for(z <- 0 until clonedStack.size) {
                           val event = clonedStack.pop()
-                          cellProfitActor ! RemoveTripFareFromCellProfitMsg(tripEvent)
+                          cellProfitActor ! RemoveTripFareFromCellProfitMsg(event)
                         }
                       }
                     } 
@@ -182,14 +183,14 @@ class CircularBufferActor extends Actor with ActorLogging {
                         val clonedStack = circularBuffer(y).tripEventStack.clone()
                         for(z <- 0 until clonedStack.size) {
                           val event = clonedStack.pop()
-                          cellProfitActor ! RemoveTripFareFromCellProfitMsg(tripEvent)
+                          cellProfitActor ! RemoveTripFareFromCellProfitMsg(event)
                         }
                       } 
                       for(y <- 0 until ((tail_15Min.location+tailJump)%(circularBufferSize))) {
                         val clonedStack = circularBuffer(y).tripEventStack.clone()
                         for(z <- 0 until clonedStack.size) {
                           val event = clonedStack.pop()
-                          cellProfitActor ! RemoveTripFareFromCellProfitMsg(tripEvent)
+                          cellProfitActor ! RemoveTripFareFromCellProfitMsg(event)
                         }
                       } 
                     }
@@ -198,7 +199,6 @@ class CircularBufferActor extends Actor with ActorLogging {
                   }
                   
                   // ------------------------tail 30Min computation -----------------------------------------------------------------
-                  
                   if((tripEndTime - tail_30Min.time.getTime)/1000 > window_30Min) {
                     val tailJump = ((tripEndTime - tail_30Min.time.getTime)/1000).toInt - window_30Min
                     if(tail_30Min.location+tailJump < (circularBufferSize) ) {
@@ -207,6 +207,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                         for(z <- 0 until circularBuffer(y).tripEventStack.size) {
                           val event = circularBuffer(y).tripEventStack.pop()
                           routeCountActor ! DecrementRouteCountMsg(event)
+                          cellProfitActor ! DecrememtEmptyTaxiMsg(event)
                         }
                       }
                     } 
@@ -216,6 +217,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                         for(z <- 0 until circularBuffer(y).tripEventStack.size) {
                           val event = circularBuffer(y).tripEventStack.pop()
                           routeCountActor ! DecrementRouteCountMsg(event)
+                          cellProfitActor ! DecrememtEmptyTaxiMsg(event)
                         }
                       } 
                       for(y <- 0 until ((tail_30Min.location+tailJump)%(circularBufferSize))) {
@@ -223,6 +225,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                         for(z <- 0 until circularBuffer(y).tripEventStack.size) {
                           val event = circularBuffer(y).tripEventStack.pop()
                           routeCountActor ! DecrementRouteCountMsg(event)
+                          cellProfitActor ! DecrememtEmptyTaxiMsg(event)
                         }
                       } 
                     }
