@@ -28,10 +28,12 @@ import play.api.libs.iteratee.Concurrent
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.functional.syntax._
 import scala.collection.mutable.ListBuffer
+import samzrat.debs2015.RouteCountActor._
+import samzrat.debs2015.CellProfitActor._
 
 case class Cell (xCell: Int, yCell: Int)
 case class TripCells(startCell: Cell, endCell: Cell)
-case class TripEvent (startTime: Date, endTime: Date, grid500Cells: TripCells, grid250Cells: TripCells, fareAmount: Double, tipAmount: Double)
+case class TripEvent (medallion: String, startTime: Date, endTime: Date, grid500Cells: TripCells, grid250Cells: TripCells, fareAmount: Double, tipAmount: Double)
 class BufferEntry(val tripEventStack: Stack[TripEvent]) {}
 class Pointer(var time: Date, var location: Int) {}
 
@@ -131,7 +133,9 @@ class CircularBufferActor extends Actor with ActorLogging {
         case None =>
         case Some(tripEvent) => 
           tripEndTime = tripEvent.endTime.getTime()
-          routeCountActor ! RouteCountActor.IncrementRouteCountMsg(tripEvent)
+          routeCountActor ! IncrementRouteCountMsg(tripEvent)
+          cellProfitActor ! AddTripFareToCellProfitMsg(tripEvent)
+          
           head.location match {
             case -1 => 
               assert (tail_15Min.location== -1 && tail_15Min.location== -1, "not -1")
@@ -169,7 +173,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                         val clonedStack = circularBuffer(y).tripEventStack.clone()
                         for(z <- 0 until clonedStack.size) {
                           val event = clonedStack.pop()
-                          cellProfitActor ! None
+                          cellProfitActor ! RemoveTripFareFromCellProfitMsg(tripEvent)
                         }
                       }
                     } 
@@ -178,14 +182,14 @@ class CircularBufferActor extends Actor with ActorLogging {
                         val clonedStack = circularBuffer(y).tripEventStack.clone()
                         for(z <- 0 until clonedStack.size) {
                           val event = clonedStack.pop()
-                          cellProfitActor ! None
+                          cellProfitActor ! RemoveTripFareFromCellProfitMsg(tripEvent)
                         }
                       } 
                       for(y <- 0 until ((tail_15Min.location+tailJump)%(circularBufferSize))) {
                         val clonedStack = circularBuffer(y).tripEventStack.clone()
                         for(z <- 0 until clonedStack.size) {
                           val event = clonedStack.pop()
-                          cellProfitActor ! None
+                          cellProfitActor ! RemoveTripFareFromCellProfitMsg(tripEvent)
                         }
                       } 
                     }
@@ -202,7 +206,7 @@ class CircularBufferActor extends Actor with ActorLogging {
                        
                         for(z <- 0 until circularBuffer(y).tripEventStack.size) {
                           val event = circularBuffer(y).tripEventStack.pop()
-                          routeCountActor ! RouteCountActor.DecrementRouteCountMsg(event)
+                          routeCountActor ! DecrementRouteCountMsg(event)
                         }
                       }
                     } 
@@ -211,14 +215,14 @@ class CircularBufferActor extends Actor with ActorLogging {
                         
                         for(z <- 0 until circularBuffer(y).tripEventStack.size) {
                           val event = circularBuffer(y).tripEventStack.pop()
-                          routeCountActor ! RouteCountActor.DecrementRouteCountMsg(event)
+                          routeCountActor ! DecrementRouteCountMsg(event)
                         }
                       } 
                       for(y <- 0 until ((tail_30Min.location+tailJump)%(circularBufferSize))) {
                         
                         for(z <- 0 until circularBuffer(y).tripEventStack.size) {
                           val event = circularBuffer(y).tripEventStack.pop()
-                          routeCountActor ! RouteCountActor.DecrementRouteCountMsg(event)
+                          routeCountActor ! DecrementRouteCountMsg(event)
                         }
                       } 
                     }

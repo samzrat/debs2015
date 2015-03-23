@@ -23,9 +23,9 @@ object DataExtractor {
           case (a, b, c, d) if(a==None || b==None || c==None || d==None) => return None
           case (Some(sLong1), Some(sLat1), Some(sLong2), Some(sLat2)) => {
             
-            (getGrid500Cells(sLong1, sLat1, sLong2, sLat2), getGrid250Cells(sLong1, sLat1, sLong2, sLat2), extractDateTime(tripData(2)), extractDateTime(tripData(3)), parseDouble(tripData(11)), parseDouble(tripData(14))) match {
-              case (a, b, c, d, e, f) if(a==None || b==None || c==None || d==None || e==None || f==None) => return None
-              case (Some(grid500Cells), Some(grid250Cells), Some(startTime), Some(endTime), Some(fareAmount), Some(tipAmount)) => return Some(TripEvent(startTime, endTime, grid500Cells, grid250Cells, fareAmount, tipAmount))
+            (tripData(0), getGrid500Cells(sLong1, sLat1, sLong2, sLat2), getGrid250Cells(sLong1, sLat1, sLong2, sLat2), extractDateTime(tripData(2)), extractDateTime(tripData(3)), parseDouble(tripData(11)), parseDouble(tripData(14))) match {
+              case (a, b, c, d, e, f, g) if(b==None || c==None || d==None || e==None || f==None || g==None) => return None
+              case (medallion, Some(grid500Cells), Some(grid250Cells), Some(startTime), Some(endTime), Some(fareAmount), Some(tipAmount)) => return Some(TripEvent(medallion, startTime, endTime, grid500Cells, grid250Cells, fareAmount, tipAmount))
             }
           }
         }

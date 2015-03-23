@@ -18,7 +18,7 @@ import RouteCountActor._
   var tenthBestCount = 0 
   
   def receive = {
-  	case IncrementRouteCountMsg(tripEvent: TripEvent) => 
+    case IncrementRouteCountMsg(tripEvent: TripEvent) => 
 	   //log.info("Increment")
 	   val route = Route(tripEvent.grid500Cells.startCell, tripEvent.grid500Cells.endCell)
 	   routeCountMap.contains(route) match {
@@ -31,24 +31,23 @@ import RouteCountActor._
 	   if(routeCountMap(route)>= tenthBestCount-5) 
 	     topTenRoutesActor ! TopTenRoutesActor.PossibleTopperMsg(route, routeCountMap(route))
 	     
-	case DecrementRouteCountMsg(tripEvent: TripEvent) => 
-	   //log.info("Decrement")
-	   val route = Route(tripEvent.grid500Cells.startCell, tripEvent.grid500Cells.endCell)
-	   routeCountMap.contains(route) match {
-	     case true => 
-	       routeCountMap += route -> (routeCountMap(route)-1)
-	       if(routeCountMap(route)>= tenthBestCount-5) 
-	         topTenRoutesActor ! TopTenRoutesActor.PossibleTopperMsg(route, routeCountMap(route))
-	     case false =>
-	       throw new Exception()
-	   }
-	case NewTopRoutesRangeMsg(bestCount: Int, tenthBestCount: Int) =>
-	  this.bestCount = bestCount
-	  this.tenthBestCount = tenthBestCount
-  }	
-  
-  
-  
+	  case DecrementRouteCountMsg(tripEvent: TripEvent) => 
+	    //log.info("Decrement")
+	    val route = Route(tripEvent.grid500Cells.startCell, tripEvent.grid500Cells.endCell)
+	    routeCountMap.contains(route) match {
+	      case true => 
+	        routeCountMap += route -> (routeCountMap(route)-1)
+	        if(routeCountMap(route)>= tenthBestCount-5) 
+	          topTenRoutesActor ! TopTenRoutesActor.PossibleTopperMsg(route, routeCountMap(route))
+ 	      case false =>
+	        throw new Exception()
+	    }
+	  case NewTopRoutesRangeMsg(bestCount: Int, tenthBestCount: Int) =>
+	    this.bestCount = bestCount
+	    this.tenthBestCount = tenthBestCount
+    case _ => throw new Exception()
+ 
+  }
 }
 
 object RouteCountActor {
