@@ -16,6 +16,7 @@ import CellProfitActor._
     case IncrementEmptyTaxiMsg(tripEvent: TripEvent) =>
       //println("IncrementEmptyTaxiMsg")
       val cell = tripEvent.grid250Cells.endCell
+      //println("IncrementEmptyTaxiMsg endCell (" + cell.xCell + ", " + cell.yCell + ")")
       cellProfitMap.contains(cell) match {
         case true =>
          cellProfitMap += cell -> ProfitData(cellProfitMap(cell).tripProfitList, cellProfitMap(cell).emptyTaxiCount+1)      
@@ -35,8 +36,8 @@ import CellProfitActor._
       }
       val profitability = calculateProfitability(cell: Cell, cellProfitMap(cell))  
 	  case AddTripFareToCellProfitMsg(tripEvent: TripEvent) =>
-      //println("AddTripFareToCellProfitMsg")
       val cell = tripEvent.grid250Cells.startCell
+      //println("AddTripFareToCellProfitMsg startCell (" + cell.xCell + ", " + cell.yCell + ")")
       cellProfitMap.contains(cell) match {                                                                                                                                                                                                                                                                                                                                                                                                                      
         case true =>
          cellProfitMap += cell -> ProfitData(cellProfitMap(cell).tripProfitList.::(TripProfit(tripEvent.fareAmount + tripEvent.tipAmount, tripEvent.medallion)), cellProfitMap(cell).emptyTaxiCount)      
@@ -66,7 +67,7 @@ import CellProfitActor._
         case _ => sortedProfitData((sortedProfitData.size-1)/2).profit
       }
     val profitability = if (profitData.emptyTaxiCount!=0 && !medianProfit.isNaN) medianProfit/profitData.emptyTaxiCount else Double.NaN
-    if(!medianProfit.isNaN && profitData.emptyTaxiCount!=0)
+    //if(!medianProfit.isNaN && profitData.emptyTaxiCount!=0)
       println("Profitability Cell(" + cell.xCell + ", " + cell.yCell + "): " + profitability + "   Median profit=" + medianProfit + "   EmptyTaxiCount=" + profitData.emptyTaxiCount)
     return profitability
   }  

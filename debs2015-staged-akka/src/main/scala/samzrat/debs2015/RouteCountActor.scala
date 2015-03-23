@@ -19,7 +19,7 @@ import RouteCountActor._
   
   def receive = {
     case IncrementRouteCountMsg(tripEvent: TripEvent) => 
-	   //log.info("Increment")
+	   //println("IncrementRouteCountMsg")
 	   val route = Route(tripEvent.grid500Cells.startCell, tripEvent.grid500Cells.endCell)
 	   routeCountMap.contains(route) match {
 	     case true => 

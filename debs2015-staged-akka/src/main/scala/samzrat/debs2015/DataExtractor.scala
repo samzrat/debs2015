@@ -39,7 +39,7 @@ object DataExtractor {
   }
   
   def getGrid250Cells(sLong1: Double, sLat1: Double, sLong2: Double, sLat2: Double): Option[TripCells] = {
-    (grid250.getCell(sLong1, sLat1), grid500.getCell(sLong2, sLat2)) match {
+    (grid250.getCell(sLong1, sLat1), grid250.getCell(sLong2, sLat2)) match {
       case (None, Some(_)) | (Some(_), None) | (None, None)=> return None
       case (startCell, endCell) => Some(TripCells(startCell.get, endCell.get))   
     }

@@ -8,8 +8,8 @@ class Grid(cellSize: Int, firstCellCentreLongitude: Double, firstCellCentreLatit
   val XdegreesPerCell = if(cellSize==500) XdegreesPer500 else XdegreesPer500/2.0
   val YdegreesPerCell = if(cellSize==500) YdegreesPer500 else YdegreesPer500/2.0
   
-  val origin_longitude = firstCellCentreLongitude - XdegreesPerCell/2.0
-  val origin_latitude  = firstCellCentreLatitude + YdegreesPerCell/2.0
+  val origin_longitude = firstCellCentreLongitude - XdegreesPer500/2.0
+  val origin_latitude  = firstCellCentreLatitude + YdegreesPer500/2.0
   
   def getCell(longitute: Double, latitude: Double): Option[Cell] = {
     val cell: Cell = Cell(((longitute-origin_longitude)/XdegreesPerCell).toInt + 1, ((origin_latitude-latitude)/YdegreesPerCell).toInt + 1)  
