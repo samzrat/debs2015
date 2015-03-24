@@ -11,17 +11,21 @@ class TopTenProfitableCellsActor extends Actor with ActorLogging {
 import TopTenProfitableCellsActor._
   
    
+  var bestProfitability = 0
+  var tenthBestProfitability = 0 
   
+  var topCellsList = ListBuffer[Tuple2[Cell, Double]]()
   
   def receive = {
-    case None => 
-  
-  
+    case PossibleTopperMsg(potentialCell: Cell, potentialCellProfitability: Double) =>
+      topCellsList += Tuple2(potentialCell, potentialCellProfitability)
+      topCellsList.sortBy(_._2).take(10)
+        
   } 
   
 }
 
 object TopTenProfitableCellsActor {
   val props = Props[TopTenProfitableCellsActor]
-  
+  case class PossibleTopperMsg(potentialCell: Cell, potentialCellProfitability: Double)
 }

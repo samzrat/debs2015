@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorLogging, Props}
 import scala.io.Source
 import akka.actor.actorRef2Scala
 import scala.collection.mutable.Map
+import samzrat.debs2015.TopTenProfitableCellsActor._
 
 class CellProfitActor extends Actor with ActorLogging {
 import CellProfitActor._
@@ -24,6 +25,8 @@ import CellProfitActor._
          cellProfitMap += cell -> ProfitData(List(), 1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
       }
       val profitability = calculateProfitability(cell: Cell, cellProfitMap(cell))
+      topTenProfitableCellsActor ! PossibleTopperMsg(cell, profitability)
+
     case DecrememtEmptyTaxiMsg(tripEvent: TripEvent) =>
       //println("DecrememtEmptyTaxiMsg")
       val cell = tripEvent.grid250Cells.endCell
@@ -35,6 +38,7 @@ import CellProfitActor._
          throw new Exception()
       }
       val profitability = calculateProfitability(cell: Cell, cellProfitMap(cell))  
+      topTenProfitableCellsActor ! PossibleTopperMsg(cell, profitability)
 	  case AddTripFareToCellProfitMsg(tripEvent: TripEvent) =>
       val cell = tripEvent.grid250Cells.startCell
       //println("AddTripFareToCellProfitMsg startCell (" + cell.xCell + ", " + cell.yCell + ")")
@@ -45,6 +49,7 @@ import CellProfitActor._
          cellProfitMap += cell -> ProfitData(List(TripProfit(tripEvent.fareAmount + tripEvent.tipAmount, null)), 0)
       }
       val profitability = calculateProfitability(cell: Cell, cellProfitMap(cell))
+      topTenProfitableCellsActor ! PossibleTopperMsg(cell, profitability)
     case RemoveTripFareFromCellProfitMsg(tripEvent: TripEvent)  =>
       //println("RemoveTripFareFromCellProfitMsg")
       val cell = tripEvent.grid250Cells.startCell
@@ -53,6 +58,7 @@ import CellProfitActor._
       
       cellProfitMap += cell -> ProfitData(cellProfitMap(cell).tripProfitList.filter(_.medallion != tripEvent.medallion), cellProfitMap(cell).emptyTaxiCount)
       val profitability = calculateProfitability(cell: Cell, cellProfitMap(cell))
+      topTenProfitableCellsActor ! PossibleTopperMsg(cell, profitability)
     case _ => throw new Exception()  
   }	
   
