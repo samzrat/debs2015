@@ -21,8 +21,9 @@ public class ApplicationMain {
 	private static Map<String, String> ll2xyConfigMap = new HashMap<String, String>();
 	private static Logger LOG = Logger.getLogger(ApplicationMain.class);
 	private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("YYYY-MM-DD hh:mm:ss");
-//	static int[][] routeCountArray = new int[300][300];
-//	static CellProfitInfo[][] cellProfitArray = new CellProfitInfo[600][600];
+	static int[][] routeCountArray = new int[300][300];
+	static CellProfitInfo[][] cellProfitArray = new CellProfitInfo[600][600];
+	static TripEvent[][] ringBuffer = new TripEvent[3600][500];
 	
 	public static void main(String[] args) throws Exception {
 		
@@ -31,7 +32,7 @@ public class ApplicationMain {
 		
 		LOG.info("Starting initialization");
 		
-/*		for(int i=0; i<300; i++)
+		for(int i=0; i<300; i++)
 			for(int j=0; j<300; j++)
 				routeCountArray[i][j] = 1;
 		
@@ -41,7 +42,11 @@ public class ApplicationMain {
 				for(int k=0; k<100; k++)
 					cellProfitArray[i][j].routeCountArray[k] = new RouteProfit();
 			}
-*/
+
+		for(int i=0; i<3600; i++)
+			for(int j=0; j<500; j++)
+				ringBuffer[i][j] = new TripEvent();
+		
 		
 		LOG.info("Starting file reading");
 		LineIterator it = FileUtils.lineIterator(new File(ll2xyConfigMap.get("grid.filename").toString()), "UTF-8");
@@ -50,7 +55,7 @@ public class ApplicationMain {
 	    	  try {
 	            ++lineCount;
 	            extractData(new TripEvent(), it);
-	            LOG.info(lineCount);
+	            //LOG.info(lineCount);
 	    	  }
 	    	  catch (NumberFormatException e) {
 	    		  LOG.info("NumberFormatException encountered");
@@ -62,18 +67,12 @@ public class ApplicationMain {
 	              continue;
 	          }
 	      }
-	      //LOG.info("Done!!!");
+	      LOG.info("Done!!!");
 	}
 	
 	private static void extractData(TripEvent toBeFilledTripEvent, LineIterator it) throws Exception {
-		String entry = it.nextLine();
-		String[] pieces = entry.split(",");
-		
-		double sLong1 = Double.parseDouble(pieces[6]);
-		double sLat1 = Double.parseDouble(pieces[7]);
-		double sLong2 = Double.parseDouble(pieces[8]);
-		double sLat2 = Double.parseDouble(pieces[9]);
-		
+		String[] pieces = it.nextLine().split(",");
+	
 		
 		toBeFilledTripEvent.beginCell500X = 
 				(int) ((Double.parseDouble(pieces[6])+74.916578)/0.005986) + 1;
@@ -84,7 +83,7 @@ public class ApplicationMain {
 				(int) ((Double.parseDouble(pieces[8])+74.916578)/0.005986) + 1;
 		toBeFilledTripEvent.endCell500Y = 
 				(int) ((41.477182778-Double.parseDouble(pieces[9]))/0.004491556) + 1;
-		LOG.info("500: (" + toBeFilledTripEvent.beginCell500X + ", " + toBeFilledTripEvent.beginCell500Y + ")  (" + toBeFilledTripEvent.endCell500X + ", " + toBeFilledTripEvent.endCell500Y + ")");
+		//LOG.info("500: (" + toBeFilledTripEvent.beginCell500X + ", " + toBeFilledTripEvent.beginCell500Y + ")  (" + toBeFilledTripEvent.endCell500X + ", " + toBeFilledTripEvent.endCell500Y + ")");
 
 		toBeFilledTripEvent.beginCell250X = 
 				(int) ((Double.parseDouble(pieces[6])+74.916578)/0.002993) + 1;
@@ -95,7 +94,7 @@ public class ApplicationMain {
 				(int) ((Double.parseDouble(pieces[8])+74.916578)/0.002993) + 1;
 		toBeFilledTripEvent.endCell250Y = 
 				(int) ((41.477182778-Double.parseDouble(pieces[9]))/0.002245778) + 1;
-		LOG.info("250: (" + toBeFilledTripEvent.beginCell250X + ", " + toBeFilledTripEvent.beginCell250Y + ")  (" + toBeFilledTripEvent.endCell250X + ", " + toBeFilledTripEvent.endCell250Y + ")");
+		//LOG.info("250: (" + toBeFilledTripEvent.beginCell250X + ", " + toBeFilledTripEvent.beginCell250Y + ")  (" + toBeFilledTripEvent.endCell250X + ", " + toBeFilledTripEvent.endCell250Y + ")");
 
 		
 		toBeFilledTripEvent.fareAmount = Double.parseDouble(pieces[11]);
