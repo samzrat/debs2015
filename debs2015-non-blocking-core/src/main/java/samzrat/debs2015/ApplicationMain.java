@@ -18,12 +18,29 @@ import java.util.Date;
 
 public class ApplicationMain {
 
+	public static final int RING_BUFFEER_SIZE = 3600;
+	public static final int RING_BUFFEER_ELEMENT_SIZE = 500;
+	public static final int ROUTE_COUNT_ARRAY_DIMENSION = 300;
+	public static final int CELL_PROFIT_ARRAY_DIMENSION = 600;
+	public static final int CELL_PROFIT_ARRAY_ROUTE_COUNT_ARRAY_SIZE = 100;
+	
 	private static Map<String, String> ll2xyConfigMap = new HashMap<String, String>();
 	private static Logger LOG = Logger.getLogger(ApplicationMain.class);
 	private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("YYYY-MM-DD hh:mm:ss");
-	static int[][] routeCountArray = new int[300][300];
-	static CellProfitInfo[][] cellProfitArray = new CellProfitInfo[600][600];
-	static TripEvent[][] ringBuffer = new TripEvent[3600][500];
+	static int[][] routeCountArray = new int[ROUTE_COUNT_ARRAY_DIMENSION][ROUTE_COUNT_ARRAY_DIMENSION];
+	static CellProfitInfo[][] cellProfitArray = new CellProfitInfo[CELL_PROFIT_ARRAY_DIMENSION][CELL_PROFIT_ARRAY_DIMENSION];
+	static TripEvent[][] ringBuffer = new TripEvent[RING_BUFFEER_SIZE][RING_BUFFEER_ELEMENT_SIZE];
+	
+	private static volatile int head = 0;
+	private static volatile int tail_15 = 0;
+	private static volatile int tail_30 = 0;
+	
+	private static Date headTime = null;
+	private static Date tail_15Time = null;
+	private static Date tail_30Time = null;
+	
+	private static int headEntryPosition = 0;
+
 	
 	public static void main(String[] args) throws Exception {
 		
@@ -32,19 +49,19 @@ public class ApplicationMain {
 		
 		LOG.info("Starting initialization");
 		
-		for(int i=0; i<300; i++)
-			for(int j=0; j<300; j++)
+		for(int i=0; i<ROUTE_COUNT_ARRAY_DIMENSION; i++)
+			for(int j=0; j<ROUTE_COUNT_ARRAY_DIMENSION; j++)
 				routeCountArray[i][j] = 1;
 		
-		for(int i=0; i<600; i++)
-			for(int j=0; j<600; j++) {
+		for(int i=0; i<CELL_PROFIT_ARRAY_DIMENSION; i++)
+			for(int j=0; j<CELL_PROFIT_ARRAY_DIMENSION; j++) {
 				cellProfitArray[i][j] = new CellProfitInfo();
-				for(int k=0; k<100; k++)
+				for(int k=0; k<CELL_PROFIT_ARRAY_ROUTE_COUNT_ARRAY_SIZE; k++)
 					cellProfitArray[i][j].routeCountArray[k] = new RouteProfit();
 			}
 
-		for(int i=0; i<3600; i++)
-			for(int j=0; j<500; j++)
+		for(int i=0; i<RING_BUFFEER_SIZE; i++)
+			for(int j=0; j<RING_BUFFEER_ELEMENT_SIZE; j++)
 				ringBuffer[i][j] = new TripEvent();
 		
 		
@@ -54,7 +71,9 @@ public class ApplicationMain {
 	      while (it.hasNext()) {
 	    	  try {
 	            ++lineCount;
-	            extractData(new TripEvent(), it);
+	            extractData(it);
+	            
+	            
 	            //LOG.info(lineCount);
 	    	  }
 	    	  catch (NumberFormatException e) {
@@ -70,72 +89,99 @@ public class ApplicationMain {
 	      LOG.info("Done!!!");
 	}
 	
-	private static void extractData(TripEvent toBeFilledTripEvent, LineIterator it) throws Exception {
+	private static void extractData(LineIterator it) throws Exception {
 		String[] pieces = it.nextLine().split(",");
 	
+		TripEvent selectedTripEvent;
+		long startTime = SIMPLE_DATE_FORMAT.parse(pieces[2]).getTime();
+		long endTime   = SIMPLE_DATE_FORMAT.parse(pieces[3]).getTime();
+				
+		if(headTime!=null && ((endTime - headTime.getTime())/1000 < 0)) {
+			//LOG.info("Event time less that previous one - New: " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
+			return;
+		}	
+		else if(headTime==null) {
+			selectedTripEvent = ringBuffer[head][headEntryPosition];
+			headEntryPosition++;
+			headTime = new Date();
+			headTime.setTime(endTime);
+		}
+		else if((endTime - headTime.getTime())/1000 == 0L) {
+			selectedTripEvent = ringBuffer[head][headEntryPosition];
+			headEntryPosition++;
+		}
+		else {
+			//LOG.info("Event time less that previous one - New: " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
+			head = (head + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
+			selectedTripEvent = ringBuffer[head][0];
+			headEntryPosition = 1;
+			headTime.setTime(endTime);
+		}
 		
-		toBeFilledTripEvent.beginCell500X = 
+		//----------SETTING TRIP DATA---------------------------- 
+		selectedTripEvent.startTime.setTime(startTime);
+		selectedTripEvent.endTime.setTime(endTime);
+
+		selectedTripEvent.beginCell500X = 
 				(int) ((Double.parseDouble(pieces[6])+74.916578)/0.005986) + 1;
-		toBeFilledTripEvent.beginCell500Y = 
+		selectedTripEvent.beginCell500Y = 
 				(int) ((41.477182778-Double.parseDouble(pieces[7]))/0.004491556) + 1;
 		
-		toBeFilledTripEvent.endCell500X = 
+		selectedTripEvent.endCell500X = 
 				(int) ((Double.parseDouble(pieces[8])+74.916578)/0.005986) + 1;
-		toBeFilledTripEvent.endCell500Y = 
+		selectedTripEvent.endCell500Y = 
 				(int) ((41.477182778-Double.parseDouble(pieces[9]))/0.004491556) + 1;
 		//LOG.info("500: (" + toBeFilledTripEvent.beginCell500X + ", " + toBeFilledTripEvent.beginCell500Y + ")  (" + toBeFilledTripEvent.endCell500X + ", " + toBeFilledTripEvent.endCell500Y + ")");
 
-		toBeFilledTripEvent.beginCell250X = 
+		selectedTripEvent.beginCell250X = 
 				(int) ((Double.parseDouble(pieces[6])+74.916578)/0.002993) + 1;
-		toBeFilledTripEvent.beginCell250Y = 
+		selectedTripEvent.beginCell250Y = 
 				(int) ((41.477182778-Double.parseDouble(pieces[7]))/0.002245778) + 1;
 		
-		toBeFilledTripEvent.endCell250X = 
+		selectedTripEvent.endCell250X = 
 				(int) ((Double.parseDouble(pieces[8])+74.916578)/0.002993) + 1;
-		toBeFilledTripEvent.endCell250Y = 
+		selectedTripEvent.endCell250Y = 
 				(int) ((41.477182778-Double.parseDouble(pieces[9]))/0.002245778) + 1;
 		//LOG.info("250: (" + toBeFilledTripEvent.beginCell250X + ", " + toBeFilledTripEvent.beginCell250Y + ")  (" + toBeFilledTripEvent.endCell250X + ", " + toBeFilledTripEvent.endCell250Y + ")");
 
 		
-		toBeFilledTripEvent.fareAmount = Double.parseDouble(pieces[11]);
-		toBeFilledTripEvent.tipAmount  = Double.parseDouble(pieces[14]);
+		selectedTripEvent.fareAmount = Double.parseDouble(pieces[11]);
+		selectedTripEvent.tipAmount  = Double.parseDouble(pieces[14]);
 		
-		toBeFilledTripEvent.startTime.setTime(SIMPLE_DATE_FORMAT.parse(pieces[2]).getTime());
-		toBeFilledTripEvent.endTime.setTime(SIMPLE_DATE_FORMAT.parse(pieces[3]).getTime());
+		selectedTripEvent.medallion0 = pieces[0].charAt(0);
+		selectedTripEvent.medallion1 = pieces[0].charAt(1);
+		selectedTripEvent.medallion2 = pieces[0].charAt(2);
+		selectedTripEvent.medallion3 = pieces[0].charAt(3);
+		selectedTripEvent.medallion4 = pieces[0].charAt(4);
+		selectedTripEvent.medallion5 = pieces[0].charAt(5);
+		selectedTripEvent.medallion6 = pieces[0].charAt(6);
+		selectedTripEvent.medallion7 = pieces[0].charAt(7);
+		selectedTripEvent.medallion8 = pieces[0].charAt(8);
+		selectedTripEvent.medallion9 = pieces[0].charAt(9);
+		selectedTripEvent.medallion10 = pieces[0].charAt(10);
+		selectedTripEvent.medallion11 = pieces[0].charAt(11);
+		selectedTripEvent.medallion12 = pieces[0].charAt(12);
+		selectedTripEvent.medallion13 = pieces[0].charAt(13);
+		selectedTripEvent.medallion14 = pieces[0].charAt(14);
+		selectedTripEvent.medallion15 = pieces[0].charAt(15);
+		selectedTripEvent.medallion16 = pieces[0].charAt(16);
+		selectedTripEvent.medallion17 = pieces[0].charAt(17);
+		selectedTripEvent.medallion18 = pieces[0].charAt(18);
+		selectedTripEvent.medallion19 = pieces[0].charAt(19);
+		selectedTripEvent.medallion20 = pieces[0].charAt(20);
+		selectedTripEvent.medallion21 = pieces[0].charAt(21);
+		selectedTripEvent.medallion22 = pieces[0].charAt(22);
+		selectedTripEvent.medallion23 = pieces[0].charAt(23);
+		selectedTripEvent.medallion24 = pieces[0].charAt(24);
+		selectedTripEvent.medallion25 = pieces[0].charAt(25);
+		selectedTripEvent.medallion26 = pieces[0].charAt(26);
+		selectedTripEvent.medallion27 = pieces[0].charAt(27);
+		selectedTripEvent.medallion28 = pieces[0].charAt(28);
+		selectedTripEvent.medallion29 = pieces[0].charAt(29);
+		selectedTripEvent.medallion30 = pieces[0].charAt(30);
+		selectedTripEvent.medallion31 = pieces[0].charAt(31);
+		
 
-		toBeFilledTripEvent.medallion0 = pieces[0].charAt(0);
-		toBeFilledTripEvent.medallion1 = pieces[0].charAt(1);
-		toBeFilledTripEvent.medallion2 = pieces[0].charAt(2);
-		toBeFilledTripEvent.medallion3 = pieces[0].charAt(3);
-		toBeFilledTripEvent.medallion4 = pieces[0].charAt(4);
-		toBeFilledTripEvent.medallion5 = pieces[0].charAt(5);
-		toBeFilledTripEvent.medallion6 = pieces[0].charAt(6);
-		toBeFilledTripEvent.medallion7 = pieces[0].charAt(7);
-		toBeFilledTripEvent.medallion8 = pieces[0].charAt(8);
-		toBeFilledTripEvent.medallion9 = pieces[0].charAt(9);
-		toBeFilledTripEvent.medallion10 = pieces[0].charAt(10);
-		toBeFilledTripEvent.medallion11 = pieces[0].charAt(11);
-		toBeFilledTripEvent.medallion12 = pieces[0].charAt(12);
-		toBeFilledTripEvent.medallion13 = pieces[0].charAt(13);
-		toBeFilledTripEvent.medallion14 = pieces[0].charAt(14);
-		toBeFilledTripEvent.medallion15 = pieces[0].charAt(15);
-		toBeFilledTripEvent.medallion16 = pieces[0].charAt(16);
-		toBeFilledTripEvent.medallion17 = pieces[0].charAt(17);
-		toBeFilledTripEvent.medallion18 = pieces[0].charAt(18);
-		toBeFilledTripEvent.medallion19 = pieces[0].charAt(19);
-		toBeFilledTripEvent.medallion20 = pieces[0].charAt(20);
-		toBeFilledTripEvent.medallion21 = pieces[0].charAt(21);
-		toBeFilledTripEvent.medallion22 = pieces[0].charAt(22);
-		toBeFilledTripEvent.medallion23 = pieces[0].charAt(23);
-		toBeFilledTripEvent.medallion24 = pieces[0].charAt(24);
-		toBeFilledTripEvent.medallion25 = pieces[0].charAt(25);
-		toBeFilledTripEvent.medallion26 = pieces[0].charAt(26);
-		toBeFilledTripEvent.medallion27 = pieces[0].charAt(27);
-		toBeFilledTripEvent.medallion28 = pieces[0].charAt(28);
-		toBeFilledTripEvent.medallion29 = pieces[0].charAt(29);
-		toBeFilledTripEvent.medallion30 = pieces[0].charAt(30);
-		toBeFilledTripEvent.medallion31 = pieces[0].charAt(31);
-		
 	}
 	
 	private static void populateConfigs() {
