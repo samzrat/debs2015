@@ -16,7 +16,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class ApplicationMain {
+public class ApplicationMain implements Runnable {
 
 	public static final int RING_BUFFEER_SIZE = 3600;
 	public static final int RING_BUFFEER_ELEMENT_SIZE = 500;
@@ -36,16 +36,25 @@ public class ApplicationMain {
 	private static volatile int tail_30 = 0;
 	
 	private static Date headTime = null;
-	private static Date tail_15Time = null;
-	private static Date tail_30Time = null;
+	//private static Date tail_15Time = null;
+	//private static Date tail_30Time = null;
 	
-	private static int headEntryPosition = 0;
+	//private static volatile int headEntryPosition = 0;
 
+	
 	
 	public static void main(String[] args) throws Exception {
 		
 		populateConfigs();
 		BasicConfigurator.configure();
+		
+
+		int headEntryPosition1 = 934;
+		int head1 = 356;
+		int f = headEntryPosition1*100000 + head1;
+		
+		LOG.info("headEntryPosition1 = " + f/100000);
+		LOG.info("head1 =" + f%100000);
 		
 		LOG.info("Starting initialization");
 		
@@ -64,7 +73,16 @@ public class ApplicationMain {
 			for(int j=0; j<RING_BUFFEER_ELEMENT_SIZE; j++)
 				ringBuffer[i][j] = new TripEvent();
 		
+		//Creating the query threads
+		ApplicationMain mt = new ApplicationMain();
+		Thread popularRoutesQueryThread = new Thread(mt);
+		Thread profitableCellsQueryThread = new Thread(mt);
+		popularRoutesQueryThread.setName("PopularRoutesQueryThread");
+		profitableCellsQueryThread.setName("ProfitableCellsQueryThread");
+		popularRoutesQueryThread. start();
+		profitableCellsQueryThread. start();
 		
+	
 		LOG.info("Starting file reading");
 		LineIterator it = FileUtils.lineIterator(new File(ll2xyConfigMap.get("grid.filename").toString()), "UTF-8");
 		Integer lineCount = 0;
@@ -89,6 +107,30 @@ public class ApplicationMain {
 	      LOG.info("Done!!!");
 	}
 	
+	public void run()
+	{
+	  
+		
+	  if(Thread.currentThread().getName().equals("PopularRoutesQueryThread"))
+		  executePopularRoutesQuery();
+	  else if(Thread.currentThread().getName().equals("ProfitableCellsQueryThread"))
+		  executeProfitableCellsQuery();
+    }
+	
+	private void executePopularRoutesQuery() {
+		LOG.info("Thread started: " + Thread.currentThread().getName());
+		while(true){
+	        ;
+	    }
+	}
+	
+    private void executeProfitableCellsQuery() {
+    	LOG.info("Thread started: " + Thread.currentThread().getName());
+    	while(true){
+            ;
+        }
+	}
+	
 	private static void extractData(LineIterator it) throws Exception {
 		String[] pieces = it.nextLine().split(",");
 	
@@ -101,21 +143,28 @@ public class ApplicationMain {
 			return;
 		}	
 		else if(headTime==null) {
-			selectedTripEvent = ringBuffer[head][headEntryPosition];
-			headEntryPosition++;
+			selectedTripEvent = ringBuffer[head%100000][head/100000];
+			head = 1*100000;
+			//headEntryPosition++;
 			headTime = new Date();
 			headTime.setTime(endTime);
 		}
 		else if((endTime - headTime.getTime())/1000 == 0L) {
-			selectedTripEvent = ringBuffer[head][headEntryPosition];
-			headEntryPosition++;
+			selectedTripEvent = ringBuffer[head%100000][head/100000];
+			head = (head/100000+1)*100000 + head%100000;
+			//headEntryPosition++;
 		}
 		else {
 			//LOG.info("Event time less that previous one - New: " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
-			head = (head + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
-			selectedTripEvent = ringBuffer[head][0];
-			headEntryPosition = 1;
+			//head = (head + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
+			tail_15 = (tail_15 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
+			tail_30 = (tail_30 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
+			selectedTripEvent = ringBuffer[(head%100000 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE][0];
+			head = 1*100000 + ((head%100000 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE);
+			//headEntryPosition = 1;
 			headTime.setTime(endTime);
+			
+			
 		}
 		
 		//----------SETTING TRIP DATA---------------------------- 
