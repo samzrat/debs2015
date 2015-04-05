@@ -3,6 +3,7 @@ package samzrat.debs2015;
 import java.io.File;
 import java.io.FileInputStream;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -19,7 +20,7 @@ import java.util.Date;
 public class ApplicationMain implements Runnable {
 
 	public static final int RING_BUFFEER_SIZE = 3600;
-	public static final int RING_BUFFEER_ELEMENT_SIZE = 500;
+	public static final int PILLAR_MAX_SIZE = 500;
 	public static final int ROUTE_COUNT_ARRAY_DIMENSION = 300;
 	public static final int CELL_PROFIT_ARRAY_DIMENSION = 600;
 	public static final int CELL_PROFIT_ARRAY_ROUTE_COUNT_ARRAY_SIZE = 100;
@@ -27,13 +28,15 @@ public class ApplicationMain implements Runnable {
 	private static Map<String, String> ll2xyConfigMap = new HashMap<String, String>();
 	private static Logger LOG = Logger.getLogger(ApplicationMain.class);
 	private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("YYYY-MM-DD hh:mm:ss");
-	static int[][] routeCountArray = new int[ROUTE_COUNT_ARRAY_DIMENSION][ROUTE_COUNT_ARRAY_DIMENSION];
+	//static int[][][][] routeCountArray = new int[ROUTE_COUNT_ARRAY_DIMENSION][ROUTE_COUNT_ARRAY_DIMENSION][ROUTE_COUNT_ARRAY_DIMENSION][ROUTE_COUNT_ARRAY_DIMENSION];
+	static HashMap<String, Integer> routeCountHashMap = new HashMap<>();
 	static CellProfitInfo[][] cellProfitArray = new CellProfitInfo[CELL_PROFIT_ARRAY_DIMENSION][CELL_PROFIT_ARRAY_DIMENSION];
-	static TripEvent[][] ringBuffer = new TripEvent[RING_BUFFEER_SIZE][RING_BUFFEER_ELEMENT_SIZE];
+	static TripEvent[][] ringBuffer = new TripEvent[RING_BUFFEER_SIZE][PILLAR_MAX_SIZE];
+	static int[] pillarRoof = new int[RING_BUFFEER_SIZE];
 	
-	private static volatile int head = 0;
-	private static volatile int tail_15 = 0;
-	private static volatile int tail_30 = 0;
+	private static volatile int pillar_head = 0;
+	//private static volatile int tail_15 = 0;
+	//private static volatile int tail_30 = 0;
 	
 	private static Date headTime = null;
 	//private static Date tail_15Time = null;
@@ -41,7 +44,10 @@ public class ApplicationMain implements Runnable {
 	
 	//private static volatile int headEntryPosition = 0;
 
+	private static int routeQuery_pillar_head = 0;
+	private static int routeQueryTail_30 = 0;
 	
+	private static Date previous_headTime = new Date(-1);;
 	
 	public static void main(String[] args) throws Exception {
 		
@@ -49,19 +55,21 @@ public class ApplicationMain implements Runnable {
 		BasicConfigurator.configure();
 		
 
-		int headEntryPosition1 = 934;
+		int pillar1 = 934;
 		int head1 = 356;
-		int f = headEntryPosition1*100000 + head1;
+		int f = pillar1*100000 + head1;
 		
-		LOG.info("headEntryPosition1 = " + f/100000);
+		LOG.info("pillar1 = " + f/100000);
 		LOG.info("head1 =" + f%100000);
 		
 		LOG.info("Starting initialization");
 		
-		for(int i=0; i<ROUTE_COUNT_ARRAY_DIMENSION; i++)
+/*		for(int i=0; i<ROUTE_COUNT_ARRAY_DIMENSION; i++)
 			for(int j=0; j<ROUTE_COUNT_ARRAY_DIMENSION; j++)
-				routeCountArray[i][j] = 1;
-		
+				for(int k=0; k<ROUTE_COUNT_ARRAY_DIMENSION; k++)
+					for(int l=0; l<ROUTE_COUNT_ARRAY_DIMENSION; l++)
+						routeCountArray[i][j][k][l] = 0;
+*/		
 		for(int i=0; i<CELL_PROFIT_ARRAY_DIMENSION; i++)
 			for(int j=0; j<CELL_PROFIT_ARRAY_DIMENSION; j++) {
 				cellProfitArray[i][j] = new CellProfitInfo();
@@ -70,8 +78,11 @@ public class ApplicationMain implements Runnable {
 			}
 
 		for(int i=0; i<RING_BUFFEER_SIZE; i++)
-			for(int j=0; j<RING_BUFFEER_ELEMENT_SIZE; j++)
+			for(int j=0; j<PILLAR_MAX_SIZE; j++)
 				ringBuffer[i][j] = new TripEvent();
+		
+		Arrays.fill(pillarRoof, -1);
+		
 		
 		//Creating the query threads
 		ApplicationMain mt = new ApplicationMain();
@@ -112,15 +123,135 @@ public class ApplicationMain implements Runnable {
 	  
 		
 	  if(Thread.currentThread().getName().equals("PopularRoutesQueryThread"))
-		  executePopularRoutesQuery();
-	  else if(Thread.currentThread().getName().equals("ProfitableCellsQueryThread"))
+		try {
+			executePopularRoutesQuery();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	else if(Thread.currentThread().getName().equals("ProfitableCellsQueryThread"))
 		  executeProfitableCellsQuery();
     }
 	
-	private void executePopularRoutesQuery() {
+	private void executePopularRoutesQuery() throws Exception {
 		LOG.info("Thread started: " + Thread.currentThread().getName());
-		while(true){
-	        ;
+		
+		int pillar_headCopy;
+		String key = "";
+		while(true) {
+			pillar_headCopy = pillar_head;
+	        if(pillar_headCopy%100000 > routeQuery_pillar_head%100000) {
+	        	for(int i=routeQuery_pillar_head/100000; i<=pillarRoof[routeQuery_pillar_head%100000]; i++) {
+	        		//process event
+	        		key = Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].beginCell500X) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].beginCell500Y) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].endCell500X) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].endCell500Y);
+	        		//LOG.info("1, " + key);
+	        		if(routeCountHashMap.containsKey(key))
+	        			routeCountHashMap.put(key, routeCountHashMap.get(key)+1);
+	        		else 
+	        			routeCountHashMap.put(key, 1);
+	        		//routeCountArray[ringBuffer[routeQuery_pillar_head%100000][i].beginCell500X][ringBuffer[routeQuery_pillar_head%100000][i].beginCell500Y][ringBuffer[routeQuery_pillar_head%100000][i].endCell500X][ringBuffer[routeQuery_pillar_head%100000][i].endCell500Y] ++;
+	        	}
+	        	for(int i=routeQuery_pillar_head%100000 + 1; i<pillar_headCopy%100000; i++) {
+	        		if(pillarRoof[i] != -1) {
+	        			for(int j=0; j<=pillarRoof[i]; j++) {
+	        				
+	        				key = Integer.toString(ringBuffer[i][j].beginCell500X) + Integer.toString(ringBuffer[i][j].beginCell500Y) + Integer.toString(ringBuffer[i][j].endCell500X) + Integer.toString(ringBuffer[i][j].endCell500Y);
+	        				//LOG.info("2, " + key);
+	        				if(routeCountHashMap.containsKey(key))
+	    	        			routeCountHashMap.put(key, routeCountHashMap.get(key)+1);
+	    	        		else 
+	    	        			routeCountHashMap.put(key, 1);
+	        				//routeCountArray[ringBuffer[i][j].beginCell500X][ringBuffer[i][j].beginCell500Y][ringBuffer[i][j].endCell500X][ringBuffer[i][j].endCell500Y] ++;
+	        				
+	        				if(j==0) {
+	        					if(i-30*60 >=0) {
+	        						if(pillarRoof[i-30*60] != -1) {
+	        							for(int k=0; k<=pillarRoof[i-30*60]; k++) {
+	        								key = Integer.toString(ringBuffer[i-30*60][k].beginCell500X) + Integer.toString(ringBuffer[i-30*60][k].beginCell500Y) + Integer.toString(ringBuffer[i-30*60][k].endCell500X) + Integer.toString(ringBuffer[i-30*60][k].endCell500Y);
+	        								//LOG.info("3, " + key);
+	        		        				if(routeCountHashMap.containsKey(key))
+	        		    	        			routeCountHashMap.put(key, routeCountHashMap.get(key)-1);
+	        		    	        		else 
+	        		    	        			throw new Exception();
+	        							}
+	        						}
+	        					}
+	        					else {
+	        						if(pillarRoof[RING_BUFFEER_SIZE + (i-30*60)] != -1) {
+	        							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + (i-30*60)]; k++) {
+	        								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].endCell500Y);
+	        								//LOG.info("4, " + key);
+	        								if(routeCountHashMap.containsKey(key))
+	        									routeCountHashMap.put(key, routeCountHashMap.get(key)-1);
+	        								else 
+	        									throw new Exception();
+					}
+	        						}
+	        					}
+	        				}
+	        			}
+	        		}
+	        		else {
+	        			if(i-30*60 >=0) {
+    						if(pillarRoof[i-30*60] != -1) {
+    							for(int k=0; k<=pillarRoof[i-30*60]; k++) {
+    								key = Integer.toString(ringBuffer[i-30*60][k].beginCell500X) + Integer.toString(ringBuffer[i-30*60][k].beginCell500Y) + Integer.toString(ringBuffer[i-30*60][k].endCell500X) + Integer.toString(ringBuffer[i-30*60][k].endCell500Y);
+    								//LOG.info("5, " + key);
+    								if(routeCountHashMap.containsKey(key))
+    									routeCountHashMap.put(key, routeCountHashMap.get(key)-1);
+    								else {
+    									LOG.info(Integer.toString(i) + ", " + Integer.toString(i-30*60) + ", " + Integer.toString(k) + ", " + key);
+    									throw new Exception();
+    								}
+    							}
+    						}
+    					}
+    					else {
+    						if(pillarRoof[RING_BUFFEER_SIZE + (i-30*60)] != -1) {
+    							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + (i-30*60)]; k++) {
+    								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].endCell500Y);
+    								//LOG.info("6, " + key);
+    								if(routeCountHashMap.containsKey(key))
+    									routeCountHashMap.put(key, routeCountHashMap.get(key)-1);
+    								else 
+    									throw new Exception();
+    							}
+    						}
+    					}
+	        		}
+	        	}
+	        	for(int i=0; i<pillar_headCopy/100000; i++) {
+	        		//process event
+	        		key = Integer.toString(ringBuffer[pillar_headCopy%100000][i].beginCell500X) + Integer.toString(ringBuffer[pillar_headCopy%100000][i].beginCell500Y)  + Integer.toString(ringBuffer[pillar_headCopy%100000][i].endCell500X) + Integer.toString(ringBuffer[pillar_headCopy%100000][i].endCell500Y);
+	        		//LOG.info("7, " + key);
+	        		if(routeCountHashMap.containsKey(key))
+	        			routeCountHashMap.put(key, routeCountHashMap.get(key)+1);
+	        		else 
+	        			routeCountHashMap.put(key, 1);
+	        		//routeCountArray[ringBuffer[pillar_headCopy%100000][i].beginCell500X][ringBuffer[pillar_headCopy%100000][i].beginCell500Y][ringBuffer[pillar_headCopy%100000][i].endCell500X][ringBuffer[pillar_headCopy%100000][i].endCell500Y] ++;
+	        	}
+	        	//routeQuery_pillar_head = pillar_headCopy/100000 + pillar_headCopy%100000;
+	        	routeQuery_pillar_head = (pillar_headCopy/100000)*100000 + pillar_headCopy%100000;
+	        	//LOG.info("1 ASSIGN routeQuery_pillar_head = " + routeQuery_pillar_head%100000);
+	        	
+	        }
+	        else {
+	        	for(int i=routeQuery_pillar_head/100000; i<pillar_headCopy/100000; i++) {
+	        		//process event
+	        		//LOG.info("routeQuery_pillar_head%100000 = " + routeQuery_pillar_head%100000);
+	        		key = Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].beginCell500X) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].beginCell500Y) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].endCell500X) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].endCell500Y);
+	        		//LOG.info("8, " + key);
+	        		if(routeCountHashMap.containsKey(key))
+	        			routeCountHashMap.put(key, routeCountHashMap.get(key)+1);
+	        		else 
+	        			routeCountHashMap.put(key, 1);
+	        		//routeCountArray[ringBuffer[routeQuery_pillar_head%100000][i].beginCell500X][ringBuffer[routeQuery_pillar_head%100000][i].beginCell500Y][ringBuffer[routeQuery_pillar_head%100000][i].endCell500X][ringBuffer[routeQuery_pillar_head%100000][i].endCell500Y] ++;
+	        	}
+	        	//routeQuery_pillar_head = pillar_headCopy/100000 + routeQuery_pillar_head%100000;
+	        	routeQuery_pillar_head = (pillar_headCopy/100000)*100000 + routeQuery_pillar_head%100000;
+	        	//LOG.info("2 ASSIGN routeQuery_pillar_head = " + routeQuery_pillar_head%100000);
+	        }
+	        //LOG.info(key);
 	    }
 	}
 	
@@ -137,35 +268,50 @@ public class ApplicationMain implements Runnable {
 		TripEvent selectedTripEvent;
 		long startTime = SIMPLE_DATE_FORMAT.parse(pieces[2]).getTime();
 		long endTime   = SIMPLE_DATE_FORMAT.parse(pieces[3]).getTime();
+		
+		int previous_pillar_head = pillar_head;
+		if(headTime != null)
+			previous_headTime.setTime(headTime.getTime());
 				
 		if(headTime!=null && ((endTime - headTime.getTime())/1000 < 0)) {
 			//LOG.info("Event time less that previous one - New: " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
 			return;
 		}	
 		else if(headTime==null) {
-			selectedTripEvent = ringBuffer[head%100000][head/100000];
-			head = 1*100000;
-			//headEntryPosition++;
-			headTime = new Date();
-			headTime.setTime(endTime);
+			selectedTripEvent = ringBuffer[pillar_head%100000][pillar_head/100000];
+
+			//headTime = new Date();
+			//headTime.setTime(endTime);
+			//pillar_head = 1*100000;
 		}
 		else if((endTime - headTime.getTime())/1000 == 0L) {
-			selectedTripEvent = ringBuffer[head%100000][head/100000];
-			head = (head/100000+1)*100000 + head%100000;
-			//headEntryPosition++;
+			selectedTripEvent = ringBuffer[pillar_head%100000][pillar_head/100000];
+			//pillar_head = (pillar_head/100000+1)*100000 + pillar_head%100000;
+
 		}
 		else {
 			//LOG.info("Event time less that previous one - New: " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
-			//head = (head + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
-			tail_15 = (tail_15 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
-			tail_30 = (tail_30 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
-			selectedTripEvent = ringBuffer[(head%100000 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE][0];
-			head = 1*100000 + ((head%100000 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE);
-			//headEntryPosition = 1;
-			headTime.setTime(endTime);
+			//pillarRoof[pillar_head%100000] = pillar_head/100000-1;
+			int newPos =  (pillar_head%100000 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
+			selectedTripEvent = ringBuffer[newPos][0];
+			//if(newPos>pillar_head%100000) {
+			//	for(int i=pillar_head%100000+1; i<newPos; i++)
+			//		pillarRoof[i] = -1;
+			//}
+			//else {
+			//	for(int i=pillar_head%100000+1; i<RING_BUFFEER_SIZE; i++)
+			//		pillarRoof[i] = -1;
+			//	for(int i=0; i<newPos; i++)
+			//		pillarRoof[i] = -1;
+			//}
+			//headTime.setTime(endTime);
+			//pillar_head = 1*100000 + newPos;
+			
 			
 			
 		}
+		//LOG.info(pillar_head%100000);
+		
 		
 		//----------SETTING TRIP DATA---------------------------- 
 		selectedTripEvent.startTime.setTime(startTime);
@@ -193,7 +339,25 @@ public class ApplicationMain implements Runnable {
 				(int) ((41.477182778-Double.parseDouble(pieces[9]))/0.002245778) + 1;
 		//LOG.info("250: (" + toBeFilledTripEvent.beginCell250X + ", " + toBeFilledTripEvent.beginCell250Y + ")  (" + toBeFilledTripEvent.endCell250X + ", " + toBeFilledTripEvent.endCell250Y + ")");
 
-		
+		if(selectedTripEvent.beginCell500X < 1 || selectedTripEvent.beginCell500X > 300
+				|| selectedTripEvent.beginCell500Y < 1 || selectedTripEvent.beginCell500Y > 300 
+				|| selectedTripEvent.beginCell250X < 1 || selectedTripEvent.beginCell250X > 600 
+				|| selectedTripEvent.beginCell250Y < 1 || selectedTripEvent.beginCell250Y > 600
+				|| selectedTripEvent.endCell500X < 1 || selectedTripEvent.endCell500X > 300
+				|| selectedTripEvent.endCell500Y < 1 || selectedTripEvent.endCell500Y > 300 
+				|| selectedTripEvent.endCell250X < 1 || selectedTripEvent.endCell250X > 600 
+				|| selectedTripEvent.endCell250Y < 1 || selectedTripEvent.endCell250Y > 600)
+		{
+/*			pillar_head = previous_pillar_head;
+			if(headTime != null)
+				previous_headTime.setTime(headTime.getTime());
+			if(previous_headTime.getTime()== -1)
+				headTime = null;
+			else 
+				headTime.setTime(previous_headTime.getTime());
+	*/		return;
+		}
+		LOG.info(Integer.toString(selectedTripEvent.beginCell500X) + Integer.toString(selectedTripEvent.beginCell500Y) + Integer.toString(selectedTripEvent.beginCell250X) + Integer.toString(selectedTripEvent.beginCell250Y));
 		selectedTripEvent.fareAmount = Double.parseDouble(pieces[11]);
 		selectedTripEvent.tipAmount  = Double.parseDouble(pieces[14]);
 		
@@ -229,6 +393,45 @@ public class ApplicationMain implements Runnable {
 		selectedTripEvent.medallion29 = pieces[0].charAt(29);
 		selectedTripEvent.medallion30 = pieces[0].charAt(30);
 		selectedTripEvent.medallion31 = pieces[0].charAt(31);
+		
+		
+		if(headTime==null) {
+			//selectedTripEvent = ringBuffer[pillar_head%100000][pillar_head/100000];
+			//headEntryPosition++;
+			headTime = new Date();
+			headTime.setTime(endTime);
+			pillar_head = 1*100000;
+		}
+		else if((endTime - headTime.getTime())/1000 == 0L) {
+			//selectedTripEvent = ringBuffer[pillar_head%100000][pillar_head/100000];
+			pillar_head = (pillar_head/100000+1)*100000 + pillar_head%100000;
+			//headEntryPosition++;
+		}
+		else {
+			//LOG.info("Event time less that previous one - New: " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
+			//head = (head + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
+			//tail_15 = (tail_15 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
+			//tail_30 = (tail_30 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
+			pillarRoof[pillar_head%100000] = pillar_head/100000-1;
+			int newPos =  (pillar_head%100000 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
+			//selectedTripEvent = ringBuffer[newPos][0];
+			if(newPos>pillar_head%100000) {
+				for(int i=pillar_head%100000+1; i<newPos; i++)
+					pillarRoof[i] = -1;
+			}
+			else {
+				for(int i=pillar_head%100000+1; i<RING_BUFFEER_SIZE; i++)
+					pillarRoof[i] = -1;
+				for(int i=0; i<newPos; i++)
+					pillarRoof[i] = -1;
+			}
+			headTime.setTime(endTime);
+			pillar_head = 1*100000 + newPos;
+			//headEntryPosition = 1;
+			
+			
+			
+		}
 		
 
 	}
