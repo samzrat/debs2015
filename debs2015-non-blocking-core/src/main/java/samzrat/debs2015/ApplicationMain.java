@@ -34,20 +34,23 @@ public class ApplicationMain implements Runnable {
 	static TripEvent[][] ringBuffer = new TripEvent[RING_BUFFEER_SIZE][PILLAR_MAX_SIZE];
 	static int[] pillarRoof = new int[RING_BUFFEER_SIZE];
 	
-	private static volatile int pillar_head = 0;
-	//private static volatile int tail_15 = 0;
-	//private static volatile int tail_30 = 0;
-	
-	private static Date headTime = null;
-	//private static Date tail_15Time = null;
-	//private static Date tail_30Time = null;
-	
-	//private static volatile int headEntryPosition = 0;
+	//INTER THREAD COMMUNICATOR
+	private static volatile int combinedHead = 0;
 
-	private static int routeQuery_pillar_head = 0;
-	private static int routeQueryTail_30 = 0;
 	
-	private static Date previous_headTime = new Date(-1);;
+	//----------writer thread internals------------------------------- 
+	private static int ringBufferHead = 0;
+	private static int pillarHead = 0;
+	private static Date headTime = null;
+    
+    //----------------------------------------------------------------
+	
+	//----------writer thread internals-------------------------------
+	//private static int routeQuery_pillar_head = 0;
+	private static int routeQuery_PillarHead = 0;
+	private static int routeQuery_RingBufferHead = 0;
+	//----------------------------------------------------------------
+	
 	
 	public static void main(String[] args) throws Exception {
 		
@@ -70,13 +73,15 @@ public class ApplicationMain implements Runnable {
 					for(int l=0; l<ROUTE_COUNT_ARRAY_DIMENSION; l++)
 						routeCountArray[i][j][k][l] = 0;
 */		
-		for(int i=0; i<CELL_PROFIT_ARRAY_DIMENSION; i++)
+
+/*		for(int i=0; i<CELL_PROFIT_ARRAY_DIMENSION; i++)
 			for(int j=0; j<CELL_PROFIT_ARRAY_DIMENSION; j++) {
 				cellProfitArray[i][j] = new CellProfitInfo();
 				for(int k=0; k<CELL_PROFIT_ARRAY_ROUTE_COUNT_ARRAY_SIZE; k++)
 					cellProfitArray[i][j].routeCountArray[k] = new RouteProfit();
 			}
-
+*/
+		
 		for(int i=0; i<RING_BUFFEER_SIZE; i++)
 			for(int j=0; j<PILLAR_MAX_SIZE; j++)
 				ringBuffer[i][j] = new TripEvent();
@@ -136,123 +141,254 @@ public class ApplicationMain implements Runnable {
 	private void executePopularRoutesQuery() throws Exception {
 		LOG.info("Thread started: " + Thread.currentThread().getName());
 		
-		int pillar_headCopy;
+		int combinedHeadCopy;
+		int writerPillarHead;
+		int writerRingBufferHead;
+
+		
 		String key = "";
 		while(true) {
-			pillar_headCopy = pillar_head;
-	        if(pillar_headCopy%100000 > routeQuery_pillar_head%100000) {
-	        	for(int i=routeQuery_pillar_head/100000; i<=pillarRoof[routeQuery_pillar_head%100000]; i++) {
-	        		//process event
-	        		key = Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].beginCell500X) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].beginCell500Y) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].endCell500X) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].endCell500Y);
-	        		//LOG.info("1, " + key);
-	        		if(routeCountHashMap.containsKey(key))
-	        			routeCountHashMap.put(key, routeCountHashMap.get(key)+1);
-	        		else 
-	        			routeCountHashMap.put(key, 1);
-	        		//routeCountArray[ringBuffer[routeQuery_pillar_head%100000][i].beginCell500X][ringBuffer[routeQuery_pillar_head%100000][i].beginCell500Y][ringBuffer[routeQuery_pillar_head%100000][i].endCell500X][ringBuffer[routeQuery_pillar_head%100000][i].endCell500Y] ++;
+			combinedHeadCopy = combinedHead;
+			writerPillarHead = combinedHeadCopy/100000;
+			writerRingBufferHead = combinedHeadCopy%100000;
+			
+	        if(writerRingBufferHead > routeQuery_RingBufferHead) {
+	        	for(int i=routeQuery_PillarHead; i<=pillarRoof[routeQuery_RingBufferHead]; i++) {
+	        		key = Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].beginCell500X) + Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].beginCell500Y) + Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].endCell500X) + Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].endCell500Y);
+	        		if(key.equals("0000"))
+	        			//LOG.info("1, " + key);
+	        		addToRouteCountHashMap(key);
 	        	}
-	        	for(int i=routeQuery_pillar_head%100000 + 1; i<pillar_headCopy%100000; i++) {
+	        	for(int i=routeQuery_RingBufferHead + 1; i<writerRingBufferHead; i++) {
 	        		if(pillarRoof[i] != -1) {
 	        			for(int j=0; j<=pillarRoof[i]; j++) {
 	        				
 	        				key = Integer.toString(ringBuffer[i][j].beginCell500X) + Integer.toString(ringBuffer[i][j].beginCell500Y) + Integer.toString(ringBuffer[i][j].endCell500X) + Integer.toString(ringBuffer[i][j].endCell500Y);
-	        				//LOG.info("2, " + key);
-	        				if(routeCountHashMap.containsKey(key))
-	    	        			routeCountHashMap.put(key, routeCountHashMap.get(key)+1);
-	    	        		else 
-	    	        			routeCountHashMap.put(key, 1);
-	        				//routeCountArray[ringBuffer[i][j].beginCell500X][ringBuffer[i][j].beginCell500Y][ringBuffer[i][j].endCell500X][ringBuffer[i][j].endCell500Y] ++;
+	        				if(key.equals("0000"))
+	        					//LOG.info("2, " + key);
+	        				addToRouteCountHashMap(key);
 	        				
 	        				if(j==0) {
-	        					if(i-30*60 >=0) {
-	        						if(pillarRoof[i-30*60] != -1) {
-	        							for(int k=0; k<=pillarRoof[i-30*60]; k++) {
-	        								key = Integer.toString(ringBuffer[i-30*60][k].beginCell500X) + Integer.toString(ringBuffer[i-30*60][k].beginCell500Y) + Integer.toString(ringBuffer[i-30*60][k].endCell500X) + Integer.toString(ringBuffer[i-30*60][k].endCell500Y);
-	        								//LOG.info("3, " + key);
-	        		        				if(routeCountHashMap.containsKey(key))
-	        		    	        			routeCountHashMap.put(key, routeCountHashMap.get(key)-1);
-	        		    	        		else 
-	        		    	        			throw new Exception();
+	        					int tail = i-30*60;
+	        					if(tail >=0) {
+	        						if(pillarRoof[tail] != -1) {
+	        							for(int k=0; k<=pillarRoof[tail]; k++) {
+	        								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
+	        								if(key.equals("0000"))
+	        									//LOG.info("3, " + key);
+	        								subtractFromRouteCountHashMap(key);
 	        							}
 	        						}
 	        					}
 	        					else {
-	        						if(pillarRoof[RING_BUFFEER_SIZE + (i-30*60)] != -1) {
-	        							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + (i-30*60)]; k++) {
-	        								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].endCell500Y);
-	        								//LOG.info("4, " + key);
-	        								if(routeCountHashMap.containsKey(key))
-	        									routeCountHashMap.put(key, routeCountHashMap.get(key)-1);
-	        								else 
-	        									throw new Exception();
-					}
+	        						if(pillarRoof[RING_BUFFEER_SIZE + (tail)] != -1) {
+	        							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
+	        								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
+	        								if(key.equals("0000"))
+	        									//LOG.info("4, " + key);
+	        								subtractFromRouteCountHashMap(key);
+	        							}
 	        						}
 	        					}
 	        				}
 	        			}
 	        		}
 	        		else {
-	        			if(i-30*60 >=0) {
-    						if(pillarRoof[i-30*60] != -1) {
-    							for(int k=0; k<=pillarRoof[i-30*60]; k++) {
-    								key = Integer.toString(ringBuffer[i-30*60][k].beginCell500X) + Integer.toString(ringBuffer[i-30*60][k].beginCell500Y) + Integer.toString(ringBuffer[i-30*60][k].endCell500X) + Integer.toString(ringBuffer[i-30*60][k].endCell500Y);
-    								//LOG.info("5, " + key);
-    								if(routeCountHashMap.containsKey(key))
-    									routeCountHashMap.put(key, routeCountHashMap.get(key)-1);
-    								else {
-    									LOG.info(Integer.toString(i) + ", " + Integer.toString(i-30*60) + ", " + Integer.toString(k) + ", " + key);
-    									throw new Exception();
-    								}
+	        			int tail = i-30*60;
+	        			if(tail >=0) {
+    						if(pillarRoof[tail] != -1) {
+    							for(int k=0; k<=pillarRoof[tail]; k++) {
+    								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
+    								if(key.equals("0000"))
+    									//LOG.info("5, " + key);
+    								subtractFromRouteCountHashMap(key);
     							}
     						}
     					}
     					else {
-    						if(pillarRoof[RING_BUFFEER_SIZE + (i-30*60)] != -1) {
-    							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + (i-30*60)]; k++) {
-    								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + (i-30*60)][k].endCell500Y);
-    								//LOG.info("6, " + key);
-    								if(routeCountHashMap.containsKey(key))
-    									routeCountHashMap.put(key, routeCountHashMap.get(key)-1);
-    								else 
-    									throw new Exception();
+    						if(pillarRoof[RING_BUFFEER_SIZE + tail] != -1) {
+    							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
+    								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
+    								if(key.equals("0000"))
+    									//LOG.info("6, " + key);
+    								subtractFromRouteCountHashMap(key);
     							}
     						}
     					}
 	        		}
 	        	}
-	        	for(int i=0; i<pillar_headCopy/100000; i++) {
-	        		//process event
-	        		key = Integer.toString(ringBuffer[pillar_headCopy%100000][i].beginCell500X) + Integer.toString(ringBuffer[pillar_headCopy%100000][i].beginCell500Y)  + Integer.toString(ringBuffer[pillar_headCopy%100000][i].endCell500X) + Integer.toString(ringBuffer[pillar_headCopy%100000][i].endCell500Y);
-	        		//LOG.info("7, " + key);
-	        		if(routeCountHashMap.containsKey(key))
-	        			routeCountHashMap.put(key, routeCountHashMap.get(key)+1);
-	        		else 
-	        			routeCountHashMap.put(key, 1);
-	        		//routeCountArray[ringBuffer[pillar_headCopy%100000][i].beginCell500X][ringBuffer[pillar_headCopy%100000][i].beginCell500Y][ringBuffer[pillar_headCopy%100000][i].endCell500X][ringBuffer[pillar_headCopy%100000][i].endCell500Y] ++;
+	        	for(int i=0; i<writerPillarHead; i++) {
+	        		key = Integer.toString(ringBuffer[writerRingBufferHead][i].beginCell500X) + Integer.toString(ringBuffer[writerRingBufferHead][i].beginCell500Y)  + Integer.toString(ringBuffer[writerRingBufferHead][i].endCell500X) + Integer.toString(ringBuffer[writerRingBufferHead][i].endCell500Y);
+	        		if(key.equals("0000"))
+	        			//LOG.info("7, " + key);
+	        		addToRouteCountHashMap(key);
 	        	}
-	        	//routeQuery_pillar_head = pillar_headCopy/100000 + pillar_headCopy%100000;
-	        	routeQuery_pillar_head = (pillar_headCopy/100000)*100000 + pillar_headCopy%100000;
+	        	routeQuery_PillarHead = writerPillarHead;
+	        	routeQuery_RingBufferHead = writerRingBufferHead;
 	        	//LOG.info("1 ASSIGN routeQuery_pillar_head = " + routeQuery_pillar_head%100000);
 	        	
 	        }
-	        else {
-	        	for(int i=routeQuery_pillar_head/100000; i<pillar_headCopy/100000; i++) {
-	        		//process event
-	        		//LOG.info("routeQuery_pillar_head%100000 = " + routeQuery_pillar_head%100000);
-	        		key = Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].beginCell500X) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].beginCell500Y) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].endCell500X) + Integer.toString(ringBuffer[routeQuery_pillar_head%100000][i].endCell500Y);
-	        		//LOG.info("8, " + key);
-	        		if(routeCountHashMap.containsKey(key))
-	        			routeCountHashMap.put(key, routeCountHashMap.get(key)+1);
-	        		else 
-	        			routeCountHashMap.put(key, 1);
-	        		//routeCountArray[ringBuffer[routeQuery_pillar_head%100000][i].beginCell500X][ringBuffer[routeQuery_pillar_head%100000][i].beginCell500Y][ringBuffer[routeQuery_pillar_head%100000][i].endCell500X][ringBuffer[routeQuery_pillar_head%100000][i].endCell500Y] ++;
+	        else if(writerRingBufferHead == routeQuery_RingBufferHead) {
+	        	for(int i=routeQuery_PillarHead; i<writerPillarHead; i++) {
+	        		key = Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].beginCell500X) + Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].beginCell500Y) + Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].endCell500X) + Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].endCell500Y);
+	        		if(key.equals("0000"))
+	        			//LOG.info("8, " + key);
+	        		addToRouteCountHashMap(key);
 	        	}
-	        	//routeQuery_pillar_head = pillar_headCopy/100000 + routeQuery_pillar_head%100000;
-	        	routeQuery_pillar_head = (pillar_headCopy/100000)*100000 + routeQuery_pillar_head%100000;
 	        	//LOG.info("2 ASSIGN routeQuery_pillar_head = " + routeQuery_pillar_head%100000);
+	        	routeQuery_PillarHead = writerPillarHead;
+	        }
+	        else {
+	        	for(int i=routeQuery_PillarHead; i<=pillarRoof[routeQuery_RingBufferHead]; i++) {
+	        		key = Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].beginCell500X) + Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].beginCell500Y) + Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].endCell500X) + Integer.toString(ringBuffer[routeQuery_RingBufferHead][i].endCell500Y);
+	        		if(key.equals("0000"))
+	        			//LOG.info("1, " + key);
+	        		addToRouteCountHashMap(key);
+	        	}
+	        	for(int i=routeQuery_RingBufferHead+1; i<RING_BUFFEER_SIZE-1; i++) {
+	        		if(pillarRoof[i] != -1) {
+	        			for(int j=0; j<=pillarRoof[i]; j++) {
+	        				
+	        				key = Integer.toString(ringBuffer[i][j].beginCell500X) + Integer.toString(ringBuffer[i][j].beginCell500Y) + Integer.toString(ringBuffer[i][j].endCell500X) + Integer.toString(ringBuffer[i][j].endCell500Y);
+	        				if(key.equals("0000"))
+	        					//LOG.info("2, " + key);
+	        				addToRouteCountHashMap(key);
+	        				
+	        				if(j==0) {
+	        					int tail = i-30*60;
+	        					if(tail >=0) {
+	        						if(pillarRoof[tail] != -1) {
+	        							for(int k=0; k<=pillarRoof[tail]; k++) {
+	        								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
+	        								if(key.equals("0000"))
+	        									//LOG.info("3, " + key);
+	        								subtractFromRouteCountHashMap(key);
+	        							}
+	        						}
+	        					}
+	        					else {
+	        						if(pillarRoof[RING_BUFFEER_SIZE + (tail)] != -1) {
+	        							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
+	        								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
+	        								if(key.equals("0000"))
+	        									//LOG.info("4, " + key);
+	        								subtractFromRouteCountHashMap(key);
+	        							}
+	        						}
+	        					}
+	        				}
+	        			}
+	        		}
+	        		else {
+	        			int tail = i-30*60;
+	        			if(tail >=0) {
+    						if(pillarRoof[tail] != -1) {
+    							for(int k=0; k<=pillarRoof[tail]; k++) {
+    								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
+    								if(key.equals("0000"))
+    									//LOG.info("5, " + key);
+    								subtractFromRouteCountHashMap(key);
+    							}
+    						}
+    					}
+    					else {
+    						if(pillarRoof[RING_BUFFEER_SIZE + tail] != -1) {
+    							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
+    								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
+    								if(key.equals("0000"))
+    									//LOG.info("6, " + key);
+    								subtractFromRouteCountHashMap(key);
+    							}
+    						}
+    					}
+	        		}
+	        	}
+	        	for(int i=0; i<writerRingBufferHead; i++) {
+	        		if(pillarRoof[i] != -1) {
+	        			for(int j=0; j<=pillarRoof[i]; j++) {
+	        				
+	        				key = Integer.toString(ringBuffer[i][j].beginCell500X) + Integer.toString(ringBuffer[i][j].beginCell500Y) + Integer.toString(ringBuffer[i][j].endCell500X) + Integer.toString(ringBuffer[i][j].endCell500Y);
+	        				if(key.equals("0000"))
+	        					//LOG.info("2, " + key);
+	        				addToRouteCountHashMap(key);
+	        				
+	        				if(j==0) {
+	        					int tail = i-30*60;
+	        					if(tail >=0) {
+	        						if(pillarRoof[tail] != -1) {
+	        							for(int k=0; k<=pillarRoof[tail]; k++) {
+	        								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
+	        								if(key.equals("0000"))
+	        									//LOG.info("3, " + key);
+	        								subtractFromRouteCountHashMap(key);
+	        							}
+	        						}
+	        					}
+	        					else {
+	        						if(pillarRoof[RING_BUFFEER_SIZE + (tail)] != -1) {
+	        							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
+	        								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
+	        								if(key.equals("0000"))
+	        									//LOG.info("4, " + key);
+	        								subtractFromRouteCountHashMap(key);
+	        							}
+	        						}
+	        					}
+	        				}
+	        			}
+	        		}
+	        		else {
+	        			int tail = i-30*60;
+	        			if(tail >=0) {
+    						if(pillarRoof[tail] != -1) {
+    							for(int k=0; k<=pillarRoof[tail]; k++) {
+    								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
+    								if(key.equals("0000"))
+    									//LOG.info("5, " + key);
+    								subtractFromRouteCountHashMap(key);
+    							}
+    						}
+    					}
+    					else {
+    						if(pillarRoof[RING_BUFFEER_SIZE + tail] != -1) {
+    							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
+    								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
+    								if(key.equals("0000"))
+    									//LOG.info("6, " + key);
+    								subtractFromRouteCountHashMap(key);
+    							}
+    						}
+    					}
+	        		}
+	        	}
+	        	for(int i=0; i<writerPillarHead; i++) {
+	        		key = Integer.toString(ringBuffer[writerRingBufferHead][i].beginCell500X) + Integer.toString(ringBuffer[writerRingBufferHead][i].beginCell500Y)  + Integer.toString(ringBuffer[writerRingBufferHead][i].endCell500X) + Integer.toString(ringBuffer[writerRingBufferHead][i].endCell500Y);
+	        		if(key.equals("0000"))
+	        			//LOG.info("7, " + key);
+	        		addToRouteCountHashMap(key);
+	        	}
+	        	routeQuery_PillarHead = writerPillarHead;
+	        	routeQuery_RingBufferHead = writerRingBufferHead;
+	        	//LOG.info("1 ASSIGN routeQuery_pillar_head = " + routeQuery_pillar_head%100000);
 	        }
 	        //LOG.info(key);
 	    }
+	}
+	
+	private void addToRouteCountHashMap(String key)
+	{
+		if(routeCountHashMap.containsKey(key))
+			routeCountHashMap.put(key, routeCountHashMap.get(key)+1);
+		else 
+			routeCountHashMap.put(key, 1);
+	}
+	
+	private void subtractFromRouteCountHashMap(String key) throws Exception
+	{
+		if(routeCountHashMap.containsKey(key))
+			routeCountHashMap.put(key, routeCountHashMap.get(key)-1);
+		else 
+			throw new Exception();
 	}
 	
     private void executeProfitableCellsQuery() {
@@ -269,48 +405,24 @@ public class ApplicationMain implements Runnable {
 		long startTime = SIMPLE_DATE_FORMAT.parse(pieces[2]).getTime();
 		long endTime   = SIMPLE_DATE_FORMAT.parse(pieces[3]).getTime();
 		
-		int previous_pillar_head = pillar_head;
-		if(headTime != null)
-			previous_headTime.setTime(headTime.getTime());
+
 				
 		if(headTime!=null && ((endTime - headTime.getTime())/1000 < 0)) {
 			//LOG.info("Event time less that previous one - New: " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
 			return;
 		}	
 		else if(headTime==null) {
-			selectedTripEvent = ringBuffer[pillar_head%100000][pillar_head/100000];
-
-			//headTime = new Date();
-			//headTime.setTime(endTime);
-			//pillar_head = 1*100000;
+			selectedTripEvent = ringBuffer[ringBufferHead][pillarHead];
 		}
 		else if((endTime - headTime.getTime())/1000 == 0L) {
-			selectedTripEvent = ringBuffer[pillar_head%100000][pillar_head/100000];
-			//pillar_head = (pillar_head/100000+1)*100000 + pillar_head%100000;
-
+			//LOG.info(pillarHead + ", " + endTime);
+			selectedTripEvent = ringBuffer[ringBufferHead][pillarHead];
 		}
 		else {
 			//LOG.info("Event time less that previous one - New: " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
-			//pillarRoof[pillar_head%100000] = pillar_head/100000-1;
-			int newPos =  (pillar_head%100000 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
-			selectedTripEvent = ringBuffer[newPos][0];
-			//if(newPos>pillar_head%100000) {
-			//	for(int i=pillar_head%100000+1; i<newPos; i++)
-			//		pillarRoof[i] = -1;
-			//}
-			//else {
-			//	for(int i=pillar_head%100000+1; i<RING_BUFFEER_SIZE; i++)
-			//		pillarRoof[i] = -1;
-			//	for(int i=0; i<newPos; i++)
-			//		pillarRoof[i] = -1;
-			//}
-			//headTime.setTime(endTime);
-			//pillar_head = 1*100000 + newPos;
-			
-			
-			
+			selectedTripEvent = ringBuffer[(ringBufferHead + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE][0];
 		}
-		//LOG.info(pillar_head%100000);
+
 		
 		
 		//----------SETTING TRIP DATA---------------------------- 
@@ -348,16 +460,10 @@ public class ApplicationMain implements Runnable {
 				|| selectedTripEvent.endCell250X < 1 || selectedTripEvent.endCell250X > 600 
 				|| selectedTripEvent.endCell250Y < 1 || selectedTripEvent.endCell250Y > 600)
 		{
-/*			pillar_head = previous_pillar_head;
-			if(headTime != null)
-				previous_headTime.setTime(headTime.getTime());
-			if(previous_headTime.getTime()== -1)
-				headTime = null;
-			else 
-				headTime.setTime(previous_headTime.getTime());
-	*/		return;
+			return;
 		}
 		LOG.info(Integer.toString(selectedTripEvent.beginCell500X) + Integer.toString(selectedTripEvent.beginCell500Y) + Integer.toString(selectedTripEvent.beginCell250X) + Integer.toString(selectedTripEvent.beginCell250Y));
+		
 		selectedTripEvent.fareAmount = Double.parseDouble(pieces[11]);
 		selectedTripEvent.tipAmount  = Double.parseDouble(pieces[14]);
 		
@@ -396,44 +502,36 @@ public class ApplicationMain implements Runnable {
 		
 		
 		if(headTime==null) {
-			//selectedTripEvent = ringBuffer[pillar_head%100000][pillar_head/100000];
-			//headEntryPosition++;
 			headTime = new Date();
 			headTime.setTime(endTime);
-			pillar_head = 1*100000;
+			ringBufferHead = 1; 
 		}
 		else if((endTime - headTime.getTime())/1000 == 0L) {
-			//selectedTripEvent = ringBuffer[pillar_head%100000][pillar_head/100000];
-			pillar_head = (pillar_head/100000+1)*100000 + pillar_head%100000;
-			//headEntryPosition++;
+			pillarHead++;
 		}
 		else {
 			//LOG.info("Event time less that previous one - New: " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
-			//head = (head + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
-			//tail_15 = (tail_15 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
-			//tail_30 = (tail_30 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
-			pillarRoof[pillar_head%100000] = pillar_head/100000-1;
-			int newPos =  (pillar_head%100000 + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
-			//selectedTripEvent = ringBuffer[newPos][0];
-			if(newPos>pillar_head%100000) {
-				for(int i=pillar_head%100000+1; i<newPos; i++)
+			
+			pillarRoof[ringBufferHead] = pillarHead-1;
+			
+			int newRingBufferHead =  (ringBufferHead + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
+			if(newRingBufferHead>ringBufferHead) {
+				for(int i=ringBufferHead+1; i<newRingBufferHead; i++)
 					pillarRoof[i] = -1;
 			}
 			else {
-				for(int i=pillar_head%100000+1; i<RING_BUFFEER_SIZE; i++)
+				for(int i=ringBufferHead+1; i<RING_BUFFEER_SIZE; i++)
 					pillarRoof[i] = -1;
-				for(int i=0; i<newPos; i++)
+				for(int i=0; i<newRingBufferHead; i++)
 					pillarRoof[i] = -1;
 			}
 			headTime.setTime(endTime);
-			pillar_head = 1*100000 + newPos;
-			//headEntryPosition = 1;
-			
-			
-			
+			ringBufferHead = newRingBufferHead;
+			pillarHead = 0;
 		}
 		
-
+		//UPDATING INTER THREAD COMMUNIICATOR
+		combinedHead = pillarHead*100000 + ringBufferHead;
 	}
 	
 	private static void populateConfigs() {
