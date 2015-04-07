@@ -42,9 +42,9 @@ public class ApplicationMain implements Runnable {
 	private static Map<String, String> ll2xyConfigMap = new HashMap<String, String>();
 	private static Logger LOG = Logger.getLogger(ApplicationMain.class);
 	private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-	//static int[][][][] routeCountArray = new int[ROUTE_COUNT_ARRAY_DIMENSION][ROUTE_COUNT_ARRAY_DIMENSION][ROUTE_COUNT_ARRAY_DIMENSION][ROUTE_COUNT_ARRAY_DIMENSION];
 	static HashMap<String, Integer> routeCountHashMap = new HashMap<>();
-	static CellProfitInfo[][] cellProfitArray = new CellProfitInfo[CELL_PROFIT_ARRAY_DIMENSION][CELL_PROFIT_ARRAY_DIMENSION];
+	//static CellProfitInfo[][] cellProfitArray = new CellProfitInfo[CELL_PROFIT_ARRAY_DIMENSION][CELL_PROFIT_ARRAY_DIMENSION];
+	static HashMap<String, CellProfitInfo> cellProfitabilityHashMap = new HashMap<>();
 	static TripEvent[][] ringBuffer = new TripEvent[RING_BUFFEER_SIZE][PILLAR_MAX_SIZE];
 	static int[] pillarRoof = new int[RING_BUFFEER_SIZE];
 	
@@ -78,6 +78,19 @@ public class ApplicationMain implements Runnable {
 	
 	//----------------------------------------------------------------
 	
+	//----------cellQuery thread internals-------------------------------
+		//private static int routeQuery_pillar_head = 0;
+		private static int cellQuery_PillarHead = 0;
+		private static int cellQuery_RingBufferHead = 0;
+		
+		private static double topCellProfitability_rank1 = 0;
+		private static double topCellProfitability_rank10 = 0;
+		private static List<TopCell> topCellsArray = new ArrayList<TopCell>(11);
+		
+		private static int internalOutputHead2 = 0;
+		
+		//----------------------------------------------------------------
+		
 	
 	public static void main(String[] args) throws Exception {
 		
@@ -94,20 +107,9 @@ public class ApplicationMain implements Runnable {
 		
 		LOG.info("Starting initialization");
 		
-/*		for(int i=0; i<ROUTE_COUNT_ARRAY_DIMENSION; i++)
-			for(int j=0; j<ROUTE_COUNT_ARRAY_DIMENSION; j++)
-				for(int k=0; k<ROUTE_COUNT_ARRAY_DIMENSION; k++)
-					for(int l=0; l<ROUTE_COUNT_ARRAY_DIMENSION; l++)
-						routeCountArray[i][j][k][l] = 0;
-*/		
 
-/*		for(int i=0; i<CELL_PROFIT_ARRAY_DIMENSION; i++)
-			for(int j=0; j<CELL_PROFIT_ARRAY_DIMENSION; j++) {
-				cellProfitArray[i][j] = new CellProfitInfo();
-				for(int k=0; k<CELL_PROFIT_ARRAY_ROUTE_COUNT_ARRAY_SIZE; k++)
-					cellProfitArray[i][j].routeCountArray[k] = new RouteProfit();
-			}
-*/
+
+
 		
 		for(int i=0; i<RING_BUFFEER_SIZE; i++)
 			for(int j=0; j<PILLAR_MAX_SIZE; j++)
@@ -178,7 +180,324 @@ public class ApplicationMain implements Runnable {
 			}
 	}
 
+	private void traverseExpiredItemForCells(String key, int i) {
+		
+	}
 	
+	private void addToCellProfitabilityHashMap(TripEvent tripEvent) {
+
+		if(tripEvent.fareAmount<0 || tripEvent.tipAmount<0)
+			return;
+
+		boolean topTenChanged = false;
+		CellProfitInfo cellProfitInfo;
+		String key = Integer.toString(tripEvent.beginCell250X) + Integer.toString(tripEvent.beginCell250Y);
+		TripFare tripFare = new TripFare(tripEvent.medallion, tripEvent.fareAmount+tripEvent.tipAmount);
+
+		if(cellProfitabilityHashMap.containsKey(key)) {
+			cellProfitInfo = cellProfitabilityHashMap.get(key);
+			cellProfitInfo.tripFareList.add(tripFare);
+
+		}
+		else {
+			cellProfitInfo = new CellProfitInfo();
+			cellProfitInfo.tripFareList.add(tripFare);
+			cellProfitabilityHashMap.put(key, cellProfitInfo);
+		}
+
+		//outputStringBuffer[outputStringHead] = Integer.toString(count);
+		//outputStringHead = (outputStringHead + 1) % OUTPUT_RING_BUFFER_SIZE;
+
+
+
+		if(cellProfitInfo.taxiCount != 0) {		
+			
+			Collections.sort(cellProfitInfo.tripFareList, new Comparator<TripFare>(){
+				public int compare(TripFare p1, TripFare p2) {
+					return (int)(p2.fare- p1.fare);
+				}
+			});
+			
+			double median;
+			if(cellProfitInfo.tripFareList.size()%2 == 0)
+				median = cellProfitInfo.tripFareList.get(cellProfitInfo.tripFareList.size()/2).fare + cellProfitInfo.tripFareList.get(cellProfitInfo.tripFareList.size()/2 - 1).fare;
+			else 
+				median = cellProfitInfo.tripFareList.get(cellProfitInfo.tripFareList.size()/2).fare;
+			
+			double profitability = median/cellProfitInfo.taxiCount;
+				
+			
+			if(topCellsArray.size()<10) {
+				topCellsArray.add(new TopCell(key, profitability));
+				topTenChanged = true;
+			}
+			else {
+
+				if(profitability>topCellProfitability_rank10) {
+
+					boolean found = false;
+					for(TopCell item: topCellsArray){
+						if(item.cell.equals(key)) {
+							item.profitability = profitability;
+							found = true;
+							topTenChanged = true;
+						}
+					}
+					if(found==false) {
+						topCellsArray.get(topCellsArray.size()-1).cell = key;
+						topCellsArray.get(topCellsArray.size()-1).profitability = profitability;
+						topTenChanged = true;
+					}
+
+				}	
+			}
+			
+			Collections.sort(topCellsArray, new Comparator<TopCell>(){
+				public int compare(TopCell p1, TopCell p2) {
+					return (int)(p2.profitability- p1.profitability);
+				}
+			});
+
+			topCellProfitability_rank10 = topCellsArray.get(topCellsArray.size()-1).profitability;
+			topCellProfitability_rank1 = topCellsArray.get(0).profitability;
+	/*		if (topTenChanged == true) {
+				for(int i=0; i<10; i++) {
+					outputRingBuffer[internalOutputHead][i] = null;
+				}
+				for(int i=0; i<topRoutesArray.size(); i++) {
+					outputRingBuffer[internalOutputHead][i] = new TopRoute(topRoutesArray.get(i).route, topRoutesArray.get(i).count);
+				}
+				String output = "";
+				for(int i=0; i<10; i++) {
+					if(outputRingBuffer[internalOutputHead][i] == null)
+						output = output + ", null";
+					else
+						output = output + ", " + outputRingBuffer[internalOutputHead][i].count;
+				}
+				//LOG.info(output);
+				outputHead = internalOutputHead;
+				internalOutputHead = (internalOutputHead + 1) % OUTPUT_RING_BUFFER_SIZE;
+
+				//LOG.info("outputHead = " + outputHead);
+
+			}
+	*/		//LOG.info(outputHead);
+
+			/*		String topRoutes = "";
+			for(TopRoute item: topRoutesArray){
+				topRoutes = topRoutes + ", " + item.count;
+			}
+			LOG.info(topRoutes);
+			 */
+		}	
+		
+
+	}
+	
+	private void subtractFromCellProfitabilityHashMap(TripEvent tripEvent) throws Exception {
+		//LOG.info("subtractFromRouteCountHashMap called");
+
+		boolean topTenChanged = false;
+		CellProfitInfo cellProfitInfo;
+		String key = Integer.toString(tripEvent.beginCell250X) + Integer.toString(tripEvent.beginCell250Y);
+		if(cellProfitabilityHashMap.containsKey(key)) {
+			cellProfitInfo = cellProfitabilityHashMap.get(key);
+			for(TripFare item: cellProfitInfo.tripFareList){
+				if(item.medallion.equals(tripEvent.medallion)) {
+					cellProfitInfo.tripFareList.remove(item);
+				}
+			}
+			Collections.sort(cellProfitInfo.tripFareList, new Comparator<TripFare>(){
+				public int compare(TripFare p1, TripFare p2) {
+					return (int)(p2.fare- p1.fare);
+				}
+			});
+
+
+		}
+		else {
+			LOG.info("DOES NOT CONTAIN KEY: " + key);
+			throw new Exception();
+		}
+
+		if(cellProfitInfo.taxiCount != 0) {		
+
+			Collections.sort(cellProfitInfo.tripFareList, new Comparator<TripFare>(){
+				public int compare(TripFare p1, TripFare p2) {
+					return (int)(p2.fare- p1.fare);
+				}
+			});
+
+			double median;
+			if(cellProfitInfo.tripFareList.size()%2 == 0)
+				median = cellProfitInfo.tripFareList.get(cellProfitInfo.tripFareList.size()/2).fare + cellProfitInfo.tripFareList.get(cellProfitInfo.tripFareList.size()/2 - 1).fare;
+			else 
+				median = cellProfitInfo.tripFareList.get(cellProfitInfo.tripFareList.size()/2).fare;
+
+			double profitability = median/cellProfitInfo.taxiCount;
+
+
+			if(topCellsArray.size()<10) {
+				topCellsArray.add(new TopCell(key, profitability));
+				topTenChanged = true;
+			}
+			else {
+
+				if(profitability>topCellProfitability_rank10) {
+
+					boolean found = false;
+					for(TopCell item: topCellsArray){
+						if(item.cell.equals(key)) {
+							item.profitability = profitability;
+							found = true;
+							topTenChanged = true;
+						}
+					}
+					if(found==false) {
+						topCellsArray.get(topCellsArray.size()-1).cell = key;
+						topCellsArray.get(topCellsArray.size()-1).profitability = profitability;
+						topTenChanged = true;
+					}
+
+				}	
+			}
+
+			Collections.sort(topCellsArray, new Comparator<TopCell>(){
+				public int compare(TopCell p1, TopCell p2) {
+					return (int)(p2.profitability- p1.profitability);
+				}
+			});
+
+			topCellProfitability_rank10 = topCellsArray.get(topCellsArray.size()-1).profitability;
+			topCellProfitability_rank1 = topCellsArray.get(0).profitability;
+			/*		if (topTenChanged == true) {
+				for(int i=0; i<10; i++) {
+					outputRingBuffer[internalOutputHead][i] = null;
+				}
+				for(int i=0; i<topRoutesArray.size(); i++) {
+					outputRingBuffer[internalOutputHead][i] = new TopRoute(topRoutesArray.get(i).route, topRoutesArray.get(i).count);
+				}
+				String output = "";
+				for(int i=0; i<10; i++) {
+					if(outputRingBuffer[internalOutputHead][i] == null)
+						output = output + ", null";
+					else
+						output = output + ", " + outputRingBuffer[internalOutputHead][i].count;
+				}
+				//LOG.info(output);
+				outputHead = internalOutputHead;
+				internalOutputHead = (internalOutputHead + 1) % OUTPUT_RING_BUFFER_SIZE;
+
+				//LOG.info("outputHead = " + outputHead);
+
+			}
+			 */		//LOG.info(outputHead);
+
+			/*		String topRoutes = "";
+			for(TopRoute item: topRoutesArray){
+				topRoutes = topRoutes + ", " + item.count;
+			}
+			LOG.info(topRoutes);
+			 */
+		}	
+	}
+
+	private void executeProfitableCellsQuery() {
+		LOG.info("Thread started: " + Thread.currentThread().getName());
+
+		int combinedHeadCopy;
+		int writerPillarHead;
+		int writerRingBufferHead;
+		String key = "";
+		while(true){
+			combinedHeadCopy = combinedHead;
+			writerPillarHead = combinedHeadCopy/100000;
+			writerRingBufferHead = combinedHeadCopy%100000;
+
+			if(writerRingBufferHead > cellQuery_RingBufferHead) {
+				for(int i=cellQuery_PillarHead; i<=pillarRoof[cellQuery_RingBufferHead]; i++) {
+					addToCellProfitabilityHashMap(ringBuffer[cellQuery_RingBufferHead][i]);
+				}
+				for(int i=cellQuery_RingBufferHead + 1; i<writerRingBufferHead; i++) {
+					if(pillarRoof[i] != -1) {
+						for(int j=0; j<=pillarRoof[i]; j++) {
+							addToCellProfitabilityHashMap(ringBuffer[i][j]);
+
+							if(j==0) {
+								traverseExpiredItemForCells(key, i);
+							}
+						}
+					}
+					else {
+						traverseExpiredItemForCells(key, i);
+					}
+				}
+				for(int i=0; i<writerPillarHead; i++) {
+					addToCellProfitabilityHashMap(ringBuffer[writerRingBufferHead][i]);
+
+					if(i==0) {
+						traverseExpiredItemForCells(key, writerRingBufferHead);
+					}
+				}
+				cellQuery_PillarHead = writerPillarHead;
+				cellQuery_RingBufferHead = writerRingBufferHead;
+				//LOG.info("1 ASSIGN cellQuery_pillar_head = " + cellQuery_pillar_head%100000);
+
+			}
+			else if(writerRingBufferHead == cellQuery_RingBufferHead) {
+				for(int i=cellQuery_PillarHead; i<writerPillarHead; i++) {
+					addToCellProfitabilityHashMap(ringBuffer[cellQuery_RingBufferHead][i]);
+				}
+				//LOG.info("2 ASSIGN cellQuery_pillar_head = " + cellQuery_pillar_head%100000);
+				cellQuery_PillarHead = writerPillarHead;
+			}
+			else {
+				for(int i=cellQuery_PillarHead; i<=pillarRoof[cellQuery_RingBufferHead]; i++) {
+					addToCellProfitabilityHashMap(ringBuffer[cellQuery_RingBufferHead][i]);
+				}
+				for(int i=cellQuery_RingBufferHead+1; i<RING_BUFFEER_SIZE; i++) {
+					if(pillarRoof[i] != -1) {
+						for(int j=0; j<=pillarRoof[i]; j++) {
+							addToCellProfitabilityHashMap(ringBuffer[i][j]);
+
+							if(j==0) {
+								traverseExpiredItemForCells(key, i);
+							}
+						}
+					}
+					else {
+						traverseExpiredItemForCells(key, i);
+					}
+				}
+				for(int i=0; i<writerRingBufferHead; i++) {
+					if(pillarRoof[i] != -1) {
+						for(int j=0; j<=pillarRoof[i]; j++) {
+							addToCellProfitabilityHashMap(ringBuffer[i][j]);
+
+							if(j==0) {
+								traverseExpiredItemForCells(key, i);
+							}
+						}
+					}
+					else {
+						traverseExpiredItemForCells(key, i);
+					}
+				}
+				for(int i=0; i<writerPillarHead; i++) {
+					addToCellProfitabilityHashMap(ringBuffer[writerRingBufferHead][i]);
+
+					if(i==0) {
+						traverseExpiredItemForCells(key, writerRingBufferHead);
+					}
+				}
+				cellQuery_PillarHead = writerPillarHead;
+				cellQuery_RingBufferHead = writerRingBufferHead;
+				//LOG.info("1 ASSIGN cellQuery_pillar_head = " + cellQuery_pillar_head%100000);
+			}
+			//LOG.info(key + ", " + routeCountHashMap.get(key));
+		}
+
+	}
 	
 	private void executePopularRoutesQuery() throws Exception {
 		LOG.info("Thread started: " + Thread.currentThread().getName());
@@ -516,12 +835,7 @@ public class ApplicationMain implements Runnable {
 
 	}
 
-    private void executeProfitableCellsQuery() {
-    	LOG.info("Thread started: " + Thread.currentThread().getName());
-    	while(true){
-            ;
-        }
-	}
+    
 	
 	private static void extractData(LineIterator it) throws Exception {
 		//LOG.info("Before");
@@ -595,39 +909,8 @@ public class ApplicationMain implements Runnable {
 		selectedTripEvent.fareAmount = Double.parseDouble(pieces[11]);
 		selectedTripEvent.tipAmount  = Double.parseDouble(pieces[14]);
 		
-		selectedTripEvent.medallion0 = pieces[0].charAt(0);
-		selectedTripEvent.medallion1 = pieces[0].charAt(1);
-		selectedTripEvent.medallion2 = pieces[0].charAt(2);
-		selectedTripEvent.medallion3 = pieces[0].charAt(3);
-		selectedTripEvent.medallion4 = pieces[0].charAt(4);
-		selectedTripEvent.medallion5 = pieces[0].charAt(5);
-		selectedTripEvent.medallion6 = pieces[0].charAt(6);
-		selectedTripEvent.medallion7 = pieces[0].charAt(7);
-		selectedTripEvent.medallion8 = pieces[0].charAt(8);
-		selectedTripEvent.medallion9 = pieces[0].charAt(9);
-		selectedTripEvent.medallion10 = pieces[0].charAt(10);
-		selectedTripEvent.medallion11 = pieces[0].charAt(11);
-		selectedTripEvent.medallion12 = pieces[0].charAt(12);
-		selectedTripEvent.medallion13 = pieces[0].charAt(13);
-		selectedTripEvent.medallion14 = pieces[0].charAt(14);
-		selectedTripEvent.medallion15 = pieces[0].charAt(15);
-		selectedTripEvent.medallion16 = pieces[0].charAt(16);
-		selectedTripEvent.medallion17 = pieces[0].charAt(17);
-		selectedTripEvent.medallion18 = pieces[0].charAt(18);
-		selectedTripEvent.medallion19 = pieces[0].charAt(19);
-		selectedTripEvent.medallion20 = pieces[0].charAt(20);
-		selectedTripEvent.medallion21 = pieces[0].charAt(21);
-		selectedTripEvent.medallion22 = pieces[0].charAt(22);
-		selectedTripEvent.medallion23 = pieces[0].charAt(23);
-		selectedTripEvent.medallion24 = pieces[0].charAt(24);
-		selectedTripEvent.medallion25 = pieces[0].charAt(25);
-		selectedTripEvent.medallion26 = pieces[0].charAt(26);
-		selectedTripEvent.medallion27 = pieces[0].charAt(27);
-		selectedTripEvent.medallion28 = pieces[0].charAt(28);
-		selectedTripEvent.medallion29 = pieces[0].charAt(29);
-		selectedTripEvent.medallion30 = pieces[0].charAt(30);
-		selectedTripEvent.medallion31 = pieces[0].charAt(31);
-		
+		selectedTripEvent.medallion = pieces[0];
+				
 		
 		if(headTime==null) {
 			headTime = new Date();
