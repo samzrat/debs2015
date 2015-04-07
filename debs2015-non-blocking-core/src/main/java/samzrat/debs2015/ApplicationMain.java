@@ -41,7 +41,7 @@ public class ApplicationMain implements Runnable {
 	
 	private static Map<String, String> ll2xyConfigMap = new HashMap<String, String>();
 	private static Logger LOG = Logger.getLogger(ApplicationMain.class);
-	private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("YYYY-MM-DD hh:mm:ss");
+	private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	//static int[][][][] routeCountArray = new int[ROUTE_COUNT_ARRAY_DIMENSION][ROUTE_COUNT_ARRAY_DIMENSION][ROUTE_COUNT_ARRAY_DIMENSION][ROUTE_COUNT_ARRAY_DIMENSION];
 	static HashMap<String, Integer> routeCountHashMap = new HashMap<>();
 	static CellProfitInfo[][] cellProfitArray = new CellProfitInfo[CELL_PROFIT_ARRAY_DIMENSION][CELL_PROFIT_ARRAY_DIMENSION];
@@ -211,52 +211,12 @@ public class ApplicationMain implements Runnable {
 	        				addToRouteCountHashMap(key);
 	        				
 	        				if(j==0) {
-	        					int tail = i-30*60;
-	        					if(tail >=0) {
-	        						if(pillarRoof[tail] != -1) {
-	        							for(int k=0; k<=pillarRoof[tail]; k++) {
-	        								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
-	        								if(key.equals("0000"))
-	        									LOG.info("3, " + key);
-	        								subtractFromRouteCountHashMap(key);
-	        							}
-	        						}
-	        					}
-	        					else {
-	        						if(pillarRoof[RING_BUFFEER_SIZE + (tail)] != -1) {
-	        							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
-	        								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
-	        								if(key.equals("0000"))
-	        									LOG.info("4, " + key);
-	        								subtractFromRouteCountHashMap(key);
-	        							}
-	        						}
-	        					}
+	        					traverseExpiredItems(key, i);
 	        				}
 	        			}
 	        		}
 	        		else {
-	        			int tail = i-30*60;
-	        			if(tail >=0) {
-    						if(pillarRoof[tail] != -1) {
-    							for(int k=0; k<=pillarRoof[tail]; k++) {
-    								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
-    								if(key.equals("0000"))
-    									LOG.info("5, " + key);
-    								subtractFromRouteCountHashMap(key);
-    							}
-    						}
-    					}
-    					else {
-    						if(pillarRoof[RING_BUFFEER_SIZE + tail] != -1) {
-    							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
-    								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
-    								if(key.equals("0000"))
-    									LOG.info("6, " + key);
-    								subtractFromRouteCountHashMap(key);
-    							}
-    						}
-    					}
+	        			traverseExpiredItems(key, i);
 	        		}
 	        	}
 	        	for(int i=0; i<writerPillarHead; i++) {
@@ -264,6 +224,10 @@ public class ApplicationMain implements Runnable {
 	        		if(key.equals("0000"))
 	        			LOG.info("7, " + key);
 	        		addToRouteCountHashMap(key);
+	        		
+	        		if(i==0) {
+	        			traverseExpiredItems(key, writerRingBufferHead);
+    				}
 	        	}
 	        	routeQuery_PillarHead = writerPillarHead;
 	        	routeQuery_RingBufferHead = writerRingBufferHead;
@@ -287,7 +251,7 @@ public class ApplicationMain implements Runnable {
 	        			LOG.info("1, " + key);
 	        		addToRouteCountHashMap(key);
 	        	}
-	        	for(int i=routeQuery_RingBufferHead+1; i<RING_BUFFEER_SIZE-1; i++) {
+	        	for(int i=routeQuery_RingBufferHead+1; i<RING_BUFFEER_SIZE; i++) {
 	        		if(pillarRoof[i] != -1) {
 	        			for(int j=0; j<=pillarRoof[i]; j++) {
 	        				
@@ -297,52 +261,12 @@ public class ApplicationMain implements Runnable {
 	        				addToRouteCountHashMap(key);
 	        				
 	        				if(j==0) {
-	        					int tail = i-30*60;
-	        					if(tail >=0) {
-	        						if(pillarRoof[tail] != -1) {
-	        							for(int k=0; k<=pillarRoof[tail]; k++) {
-	        								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
-	        								if(key.equals("0000"))
-	        									LOG.info("3, " + key);
-	        								subtractFromRouteCountHashMap(key);
-	        							}
-	        						}
-	        					}
-	        					else {
-	        						if(pillarRoof[RING_BUFFEER_SIZE + (tail)] != -1) {
-	        							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
-	        								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
-	        								if(key.equals("0000"))
-	        									LOG.info("4, " + key);
-	        								subtractFromRouteCountHashMap(key);
-	        							}
-	        						}
-	        					}
+	        					traverseExpiredItems(key, i);
 	        				}
 	        			}
 	        		}
 	        		else {
-	        			int tail = i-30*60;
-	        			if(tail >=0) {
-    						if(pillarRoof[tail] != -1) {
-    							for(int k=0; k<=pillarRoof[tail]; k++) {
-    								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
-    								if(key.equals("0000"))
-    									LOG.info("5, " + key);
-    								subtractFromRouteCountHashMap(key);
-    							}
-    						}
-    					}
-    					else {
-    						if(pillarRoof[RING_BUFFEER_SIZE + tail] != -1) {
-    							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
-    								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
-    								if(key.equals("0000"))
-    									LOG.info("6, " + key);
-    								subtractFromRouteCountHashMap(key);
-    							}
-    						}
-    					}
+	        			traverseExpiredItems(key, i);
 	        		}
 	        	}
 	        	for(int i=0; i<writerRingBufferHead; i++) {
@@ -355,52 +279,12 @@ public class ApplicationMain implements Runnable {
 	        				addToRouteCountHashMap(key);
 	        				
 	        				if(j==0) {
-	        					int tail = i-30*60;
-	        					if(tail >=0) {
-	        						if(pillarRoof[tail] != -1) {
-	        							for(int k=0; k<=pillarRoof[tail]; k++) {
-	        								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
-	        								if(key.equals("0000"))
-	        									LOG.info("3, " + key);
-	        								subtractFromRouteCountHashMap(key);
-	        							}
-	        						}
-	        					}
-	        					else {
-	        						if(pillarRoof[RING_BUFFEER_SIZE + (tail)] != -1) {
-	        							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
-	        								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
-	        								if(key.equals("0000"))
-	        									LOG.info("4, " + key);
-	        								subtractFromRouteCountHashMap(key);
-	        							}
-	        						}
-	        					}
+	        					traverseExpiredItems(key, i);
 	        				}
 	        			}
 	        		}
 	        		else {
-	        			int tail = i-30*60;
-	        			if(tail >=0) {
-    						if(pillarRoof[tail] != -1) {
-    							for(int k=0; k<=pillarRoof[tail]; k++) {
-    								key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
-    								if(key.equals("0000"))
-    									LOG.info("5, " + key);
-    								subtractFromRouteCountHashMap(key);
-    							}
-    						}
-    					}
-    					else {
-    						if(pillarRoof[RING_BUFFEER_SIZE + tail] != -1) {
-    							for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
-    								key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
-    								if(key.equals("0000"))
-    									LOG.info("6, " + key);
-    								subtractFromRouteCountHashMap(key);
-    							}
-    						}
-    					}
+	        			traverseExpiredItems(key, i);
 	        		}
 	        	}
 	        	for(int i=0; i<writerPillarHead; i++) {
@@ -408,6 +292,10 @@ public class ApplicationMain implements Runnable {
 	        		if(key.equals("0000"))
 	        			LOG.info("7, " + key);
 	        		addToRouteCountHashMap(key);
+	        		
+	        		if(i==0) {
+	        			traverseExpiredItems(key, writerRingBufferHead);
+    				}
 	        	}
 	        	routeQuery_PillarHead = writerPillarHead;
 	        	routeQuery_RingBufferHead = writerRingBufferHead;
@@ -417,6 +305,31 @@ public class ApplicationMain implements Runnable {
 	    }
 	}
 	
+	private void traverseExpiredItems(String key, int ringBufferHead) throws Exception {
+
+		int tail = ringBufferHead-30*60;
+		if(tail >=0) {
+			if(pillarRoof[tail] != -1) {
+				for(int k=0; k<=pillarRoof[tail]; k++) {
+					key = Integer.toString(ringBuffer[tail][k].beginCell500X) + Integer.toString(ringBuffer[tail][k].beginCell500Y) + Integer.toString(ringBuffer[tail][k].endCell500X) + Integer.toString(ringBuffer[tail][k].endCell500Y);
+					if(key.equals("0000"))
+						LOG.info("3, " + key);
+					subtractFromRouteCountHashMap(key);
+				}
+			}
+		}
+		else {
+			if(pillarRoof[RING_BUFFEER_SIZE + (tail)] != -1) {
+				for(int k=0; k<=pillarRoof[RING_BUFFEER_SIZE + tail]; k++) {
+					key = Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].beginCell500Y) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500X) + Integer.toString(ringBuffer[RING_BUFFEER_SIZE + tail][k].endCell500Y);
+					if(key.equals("0000"))
+						LOG.info("4, " + key);
+					subtractFromRouteCountHashMap(key);
+				}
+			}
+		}
+
+	}
 	private void addToRouteCountHashMap(String key)
 	{
 		int count = 1;
@@ -465,7 +378,7 @@ public class ApplicationMain implements Runnable {
 			}
 		});
 		
-/*		topRouteCount_rank10 = topRoutesArray.get(topRoutesArray.size()-1).count;
+		topRouteCount_rank10 = topRoutesArray.get(topRoutesArray.size()-1).count;
 		topRouteCount_rank1 = topRoutesArray.get(0).count;
 		if (topTenChanged == true) {
 			for(int i=0; i<10; i++) {
@@ -488,7 +401,7 @@ public class ApplicationMain implements Runnable {
 			//LOG.info("outputHead = " + outputHead);
 			
 		}
-*/		//LOG.info(outputHead);
+		//LOG.info(outputHead);
 		
 /*		String topRoutes = "";
 		for(TopRoute item: topRoutesArray){
@@ -499,7 +412,7 @@ public class ApplicationMain implements Runnable {
 	}
 
 	private void outputTopRoutes() throws Exception {
-		int copyOfOutPutHead;
+		int copyOfOutPutHead = -1;
 		int previousCopyOfOutPutHead = -1;
 
 		int copyOfOutputStringHead = 0;
@@ -515,7 +428,7 @@ public class ApplicationMain implements Runnable {
 				copyOfOutputStringHead = outputStringHead;
 
 				for(int i=previouscopyOfOutputStringHead; i< copyOfOutputStringHead; i++)
-					writer.write(outputStringBuffer[i] + '\n');
+					//writer.write(outputStringBuffer[i] + '\n');
 
 								
 				
@@ -533,7 +446,7 @@ public class ApplicationMain implements Runnable {
 								output += ", " + outputRingBuffer[l][i].count;
 						}
 						//LOG.info(output);
-						//writer.write(output + '\n');
+						writer.write(output + '\n');
 					}
 					previousCopyOfOutPutHead = copyOfOutPutHead;
 				}
@@ -548,6 +461,7 @@ public class ApplicationMain implements Runnable {
 
 	private void subtractFromRouteCountHashMap(String key) throws Exception
 	{
+		//LOG.info("subtractFromRouteCountHashMap called");
 		int count = 1;
 		if(routeCountHashMap.containsKey(key)) {
 			count = routeCountHashMap.get(key) - 1;
@@ -557,16 +471,17 @@ public class ApplicationMain implements Runnable {
 		{
 			LOG.info("DOES NOT CONTAIN KEY: " + key);
 			throw new Exception();
-		
+
 		}
-		
-		
-		
+
+
+
 		boolean found = false;
 		for(TopRoute item: topRoutesArray){
 			if(item.route.equals(key)) {
 				item.count = count;
 				found = true;
+				//LOG.info("found in top ten = " + key + "  " + count);
 			}
 		}
 		if(found==true) {
@@ -575,10 +490,32 @@ public class ApplicationMain implements Runnable {
 					return p2.count- p1.count;
 				}
 			});
+
+			topRouteCount_rank10 = topRoutesArray.get(topRoutesArray.size()-1).count;
+			topRouteCount_rank1 = topRoutesArray.get(0).count;
+
+			for(int i=0; i<10; i++) {
+				outputRingBuffer[internalOutputHead][i] = null;
+			}
+			for(int i=0; i<topRoutesArray.size(); i++) {
+				outputRingBuffer[internalOutputHead][i] = new TopRoute(topRoutesArray.get(i).route, topRoutesArray.get(i).count);
+			}
+			String output = "";
+			for(int i=0; i<10; i++) {
+				if(outputRingBuffer[internalOutputHead][i] == null)
+					output = output + ", null";
+				else
+					output = output + ", " + outputRingBuffer[internalOutputHead][i].count;
+			}
+			//LOG.info(output);
+			outputHead = internalOutputHead;
+			internalOutputHead = (internalOutputHead + 1) % OUTPUT_RING_BUFFER_SIZE;
+
+			//LOG.info("outputHead = " + outputHead);
 		}
 
 	}
-	
+
     private void executeProfitableCellsQuery() {
     	LOG.info("Thread started: " + Thread.currentThread().getName());
     	while(true){
@@ -587,8 +524,10 @@ public class ApplicationMain implements Runnable {
 	}
 	
 	private static void extractData(LineIterator it) throws Exception {
+		//LOG.info("Before");
 		String[] pieces = it.nextLine().split(",");
-	
+		//LOG.info("After");
+		
 		TripEvent selectedTripEvent;
 		long startTime = SIMPLE_DATE_FORMAT.parse(pieces[2]).getTime();
 		long endTime   = SIMPLE_DATE_FORMAT.parse(pieces[3]).getTime();
@@ -596,7 +535,7 @@ public class ApplicationMain implements Runnable {
 
 				
 		if(headTime!=null && ((endTime - headTime.getTime())/1000 < 0)) {
-			//LOG.info("Event time less that previous one - New: " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
+			LOG.info("Event time less that previous one - New: (" + pieces[3] + ") " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
 			return;
 		}	
 		else if(headTime==null) {
@@ -648,6 +587,7 @@ public class ApplicationMain implements Runnable {
 				|| selectedTripEvent.endCell250X < 1 || selectedTripEvent.endCell250X > 600 
 				|| selectedTripEvent.endCell250Y < 1 || selectedTripEvent.endCell250Y > 600)
 		{
+			//LOG.info("Out of grid bounds");
 			return;
 		}
 		//LOG.info(Integer.toString(selectedTripEvent.beginCell500X) + Integer.toString(selectedTripEvent.beginCell500Y) + Integer.toString(selectedTripEvent.beginCell250X) + Integer.toString(selectedTripEvent.beginCell250Y));
@@ -692,10 +632,13 @@ public class ApplicationMain implements Runnable {
 		if(headTime==null) {
 			headTime = new Date();
 			headTime.setTime(endTime);
-			ringBufferHead = 1; 
+			ringBufferHead = 0; 
+			pillarHead = 1;
+			//LOG.info("headTime==null");
 		}
 		else if((endTime - headTime.getTime())/1000 == 0L) {
 			pillarHead++;
+			//LOG.info("same" + endTime);
 		}
 		else {
 			//LOG.info("Event time less that previous one - New: " + SIMPLE_DATE_FORMAT.parse(pieces[3]) + "    Previous: " + headTime);
@@ -703,6 +646,9 @@ public class ApplicationMain implements Runnable {
 			pillarRoof[ringBufferHead] = pillarHead-1;
 			
 			int newRingBufferHead =  (ringBufferHead + (int)((endTime - headTime.getTime())/1000)) % RING_BUFFEER_SIZE;
+			//LOG.info((int)((endTime - headTime.getTime())/1000));
+			//LOG.info(newRingBufferHead);
+			//LOG.info("different" + endTime);
 			if(newRingBufferHead>ringBufferHead) {
 				for(int i=ringBufferHead+1; i<newRingBufferHead; i++)
 					pillarRoof[i] = -1;
@@ -715,11 +661,12 @@ public class ApplicationMain implements Runnable {
 			}
 			headTime.setTime(endTime);
 			ringBufferHead = newRingBufferHead;
-			pillarHead = 0;
+			pillarHead = 1;
 		}
 		
 		//UPDATING INTER THREAD COMMUNIICATOR
 		combinedHead = pillarHead*100000 + ringBufferHead;
+		//LOG.info(ringBufferHead);
 	}
 	
 	private static void populateConfigs() {
